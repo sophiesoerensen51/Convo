@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "547176052859",
+    "project_id": "convo-98bb8",
+    "storage_bucket": "convo-98bb8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547176052859:android:6d07448c7ba219ce42cade",
+        "android_client_info": {
+          "package_name": "com.convo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "547176052859-cphq2e5nn4tllj3l9oooirq2n72eipop.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.convo",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "547176052859-nkreic9g73837nhp127gj5jgr6e90mg7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-8WAVhZbM8Yspp1pq-WbDAykRTTIEHRY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "547176052859-nkreic9g73837nhp127gj5jgr6e90mg7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "547176052859-0su3s7282k3qu6u6tncto53dibu7b4g9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "org.reactjs.native.example.Convo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
