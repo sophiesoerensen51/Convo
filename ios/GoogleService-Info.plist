@@ -32,5 +32,9 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:547176052859:ios:85bd81822415c9a742cade</string>
+	<key>NSCameraUsageDescription</key>
+<string>Vi har brug for adgang til dit kamera for at tage billeder.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Vi har brug for adgang til dine billeder.</string>
 </dict>
 </plist>

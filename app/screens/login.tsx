@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {Text, View, TextInput, Button, StyleSheet, SafeAreaView, TouchableOpacity, Image} from 'react-native';
+import { Text, View, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 
@@ -8,12 +8,12 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [userInfo, setUserInfo] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  
 
+  
   const onLoginPress = async () => {
     try {
       const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      console.log('User signed in with email');
+      console.log('User signed in with email:', userCredential.user);
       setUserInfo(userCredential.user);
       setErrorMessage('');
       navigation.reset({
@@ -21,6 +21,7 @@ const LoginScreen = ({ navigation }) => {
         routes: [{ name: 'Home' }],
       });
     } catch (error) {
+      console.error('Login failed:', error);
       if (error.code === 'auth/user-not-found') {
         setErrorMessage('No user found with this email.');
       } else if (error.code === 'auth/wrong-password') {
@@ -30,48 +31,71 @@ const LoginScreen = ({ navigation }) => {
       }
     }
   };
-  
+
   const onGoogleButtonPress = async () => {
     try {
+      await GoogleSignin.signOut(); // ryd gamle tokens
+  
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const signInResult = await GoogleSignin.signIn();
-      let idToken = signInResult?.idToken || signInResult.data?.idToken;
+  
+      // Log ind via Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('userInfo', userInfo);
+  
+      // Hent idToken eksplicit
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+  
       if (!idToken) {
         throw new Error('No ID token found');
       }
   
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       const userCredential = await auth().signInWithCredential(googleCredential);
-      setUserInfo(userCredential.user);
-      console.log('User signed in with Google:', userCredential.user);
+      const signedInUser = userCredential.user;
+  
+    
+      if (!signedInUser.displayName || !signedInUser.photoURL) {
+        await signedInUser.updateProfile({
+          displayName: userInfo.user.name,
+          photoURL: userInfo.user.photo,
+        });
+      }
+  
+      await signedInUser.reload();
+  
+      console.log('Google login success:', signedInUser);
+  
+      setUserInfo(signedInUser);
+      setErrorMessage('');
   
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
     } catch (error) {
-      console.error('Error during Google Sign-In', error);
+      console.error('Google Sign-In error:', error);
       setErrorMessage('Google Sign-In failed. Try again.');
     }
   };
   
-
+  
   return (
     <SafeAreaView style={styles.container}>
-         <Image
-        source={require('../assets/ConvoLogo.png')} 
+      <Image
+        source={require('../assets/ConvoLogo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-      
-        {userInfo && (
+
+      {userInfo && (
         <View style={styles.userInfoContainer}>
           <Text style={styles.userInfoText}>
             Hello, {userInfo.displayName || 'user'}!
           </Text>
           <Text style={styles.userInfoText}>Email: {userInfo.email}</Text>
         </View>
-        )}
+      )}
       <Text style={styles.title}>Login using Email</Text>
 
       <TextInput
@@ -91,32 +115,32 @@ const LoginScreen = ({ navigation }) => {
         autoCapitalize="none"
       />
 
-    <View style={styles.buttonContainer}>
-     <TouchableOpacity style={styles.button} onPress={onLoginPress}>
-    <Text style={styles.buttonText}>Log In</Text>
-     </TouchableOpacity>
-    </View>
-
-    <View style={styles.buttonContainer}>
-     <TouchableOpacity 
-        style={[styles.button, { backgroundColor: '#28A745' }]} 
-     onPress={() => navigation.navigate('CreateAccount')}
-     >
-     <Text style={styles.buttonText}>Create Account</Text>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={onLoginPress}>
+          <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
-    </View>
+      </View>
 
-    {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: '#28A745' }]}
+          onPress={() => navigation.navigate('CreateAccount')}
+        >
+          <Text style={styles.buttonText}>Create Account</Text>
+        </TouchableOpacity>
+      </View>
 
-    <View style={styles.buttonContainer}>
-     <TouchableOpacity style={styles.googleButton} onPress={onGoogleButtonPress}>
-    <Image
-      source={require('../assets/google.png')} 
-      style={styles.googleLogo}
-    />
-    <Text style={styles.googleButtonText}>Sign in / Sign up with Google</Text>
-    </TouchableOpacity>
-    </View>
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.googleButton} onPress={onGoogleButtonPress}>
+          <Image
+            source={require('../assets/google.png')}
+            style={styles.googleLogo}
+          />
+          <Text style={styles.googleButtonText}>Sign in / Sign up with Google</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -129,9 +153,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   buttonContainer: {
-    width: '75%', // Ens bredde for alle knapper
+    width: '75%',
     marginTop: 10,
-  },  
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -162,15 +186,14 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    
   },
   errorText: {
     color: 'red',
     marginTop: 10,
   },
   userInfoContainer: {
-    marginTop: 10, // Lidt luft efter logo
-    marginBottom: 20, // Mere luft før "Login"
+    marginTop: 10,
+    marginBottom: 20,
     padding: 15,
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
@@ -203,7 +226,6 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
   },
-  
 });
 
 export default LoginScreen;

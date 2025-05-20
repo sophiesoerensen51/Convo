@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "default": "convo-98bb8",
+    "prod": "convo-private-d3b83",
+    "oldproject": "convo-98bb8",
+    "convo-old": "convo-98bb8",
+    "newconvo": "convo-private-d3b83"
+  },
+  "targets": {},
+  "etags": {}
+}

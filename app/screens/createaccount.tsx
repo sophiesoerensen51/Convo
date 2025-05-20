@@ -1,18 +1,46 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+
 
 const CreateAccountScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [name, setName] = useState('');
+
 
   const onCreateAccountPress = async () => {
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       console.log('User account created & signed in!');
+  
+      await auth().currentUser?.updateProfile({
+        displayName: name,
+        photoURL: null,
+      });
+  
+      await auth().currentUser?.reload();
+  
+      //Tilføj bruger til Firestore
+      await firestore()
+        .collection('Users')
+        .doc(auth().currentUser.uid)
+        .set({
+          name: name,
+          email: email,
+          chatRooms: [],
+          createdAt: firestore.FieldValue.serverTimestamp(),
+        });
+  
       setErrorMessage('');
-      navigation.navigate('HomeScreen'); // send til Home
+  
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+  
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {
         setErrorMessage('That email address is already in use!');
@@ -25,8 +53,7 @@ const CreateAccountScreen = ({ navigation }) => {
       }
       console.error(error);
     }
-  };
-  
+  };  
   return (
     <SafeAreaView style={styles.container}>
       <Image source={require('../assets/ConvoLogo.png')} style={styles.logo} resizeMode="contain" />
@@ -47,6 +74,13 @@ const CreateAccountScreen = ({ navigation }) => {
         secureTextEntry
         autoCapitalize="none"
       />
+      <TextInput
+  style={styles.input}
+  placeholder="Name"
+  value={name}
+  onChangeText={setName}
+/>
+
       <TouchableOpacity style={styles.button} onPress={onCreateAccountPress}>
         <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>

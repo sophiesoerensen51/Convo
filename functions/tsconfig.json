@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",                     // <-- Ændret fra "NodeNext"
+    "target": "ES2020",                       // <-- Opdateret fra es2017
+    "lib": ["ES2020"],                        // <-- Tilføjet for moderne JS features
+    "outDir": "lib",
+    "rootDir": "src",                         // <-- God idé at tilføje
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "sourceMap": true,
+    "skipLibCheck": true                      // <-- Tilføjet for at undgå type-fejl i node_modules
+  },
+  "compileOnSave": true,
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
