@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "547176052859-cphq2e5nn4tllj3l9oooirq2n72eipop.apps.googleusercontent.com",
+          "client_id": "547176052859-pvtek5vgaktdrknspfnncm1hvfg7psl9.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.convo",
-            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+            "certificate_hash": "ce0bfaaa4a5af3a6c2c150f91f70fdb9e7d3ff7e"
           }
         },
         {

@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 GoogleSignin.configure({
   webClientId: '547176052859-nkreic9g73837nhp127gj5jgr6e90mg7.apps.googleusercontent.com',
   iosClientId: '547176052859-0su3s7282k3qu6u6tncto53dibu7b4g9.apps.googleusercontent.com',
+  offlineAccess: false,
 });
 
 const Stack = createNativeStackNavigator();

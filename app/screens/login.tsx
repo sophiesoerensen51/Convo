@@ -54,7 +54,7 @@ const LoginScreen = ({ navigation }) => {
       const userCredential = await auth().signInWithCredential(googleCredential);
       const signedInUser = userCredential.user;
   
-    
+      // Opdater profil hvis nødvendigt
       if (!signedInUser.displayName || !signedInUser.photoURL) {
         await signedInUser.updateProfile({
           displayName: userInfo.user.name,
