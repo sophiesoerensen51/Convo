@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation }) => {
     })
     .catch(error => console.error('Migration error:', error));
 
-  // 👇 FLYT DENNE OP HER
+ 
   let cleanupRooms = () => {};
 
   const unsubscribeUser = firestore()
@@ -73,7 +73,7 @@ const HomeScreen = ({ navigation }) => {
           });
       });
 
-      // Nu virker dette korrekt
+     
       cleanupRooms = () => {
         unsubscribeRooms.forEach(unsub => unsub());
       };

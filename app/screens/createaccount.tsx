@@ -15,14 +15,14 @@ const CreateAccountScreen = ({ navigation }) => {
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       console.log('User account created & signed in!');
-  
+
       await auth().currentUser?.updateProfile({
         displayName: name,
         photoURL: null,
       });
-  
+
       await auth().currentUser?.reload();
-  
+
       //Tilføj bruger til Firestore
       await firestore()
         .collection('Users')
@@ -33,14 +33,14 @@ const CreateAccountScreen = ({ navigation }) => {
           chatRooms: [],
           createdAt: firestore.FieldValue.serverTimestamp(),
         });
-  
+
       setErrorMessage('');
-  
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
-  
+
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {
         setErrorMessage('That email address is already in use!');
@@ -53,7 +53,9 @@ const CreateAccountScreen = ({ navigation }) => {
       }
       console.error(error);
     }
-  };  
+  };
+
+
   return (
     <SafeAreaView style={styles.container}>
       <Image source={require('../assets/ConvoLogo.png')} style={styles.logo} resizeMode="contain" />
@@ -75,11 +77,11 @@ const CreateAccountScreen = ({ navigation }) => {
         autoCapitalize="none"
       />
       <TextInput
-  style={styles.input}
-  placeholder="Name"
-  value={name}
-  onChangeText={setName}
-/>
+        style={styles.input}
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+      />
 
       <TouchableOpacity style={styles.button} onPress={onCreateAccountPress}>
         <Text style={styles.buttonText}>Create Account</Text>
