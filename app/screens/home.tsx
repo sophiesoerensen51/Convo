@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Image
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 
+// Skærm til visning af chatrum
 const HomeScreen = ({ navigation }) => {
-  const [user, setUser] = useState(null);
-  const [chatRooms, setChatRooms] = useState([]);
+  const [user, setUser] = useState(null);//Gemmer den nuværende bruger
+  const [chatRooms, setChatRooms] = useState([]);//Gemmer brugerens chatrum
 
+   // Hent brugerdata og abonnér på brugerens chatrum
   useEffect(() => {
   const currentUser = auth().currentUser;
   if (!currentUser) {
@@ -16,7 +18,7 @@ const HomeScreen = ({ navigation }) => {
 
   setUser(currentUser);
 
-  // Migration
+      // Udføre datamigrering: tilføje 'lastMessageTimestamp' hvis kun 'lastMessageAt' findes
   firestore()
     .collection('chatRooms')
     .get()
@@ -31,7 +33,6 @@ const HomeScreen = ({ navigation }) => {
     })
     .catch(error => console.error('Migration error:', error));
 
-  // 👇 FLYT DENNE OP HER
   let cleanupRooms = () => {};
 
   const unsubscribeUser = firestore()
@@ -73,7 +74,7 @@ const HomeScreen = ({ navigation }) => {
           });
       });
 
-      // Nu virker dette korrekt
+    
       cleanupRooms = () => {
         unsubscribeRooms.forEach(unsub => unsub());
       };

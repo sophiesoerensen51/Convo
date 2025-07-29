@@ -14,6 +14,7 @@ const ChatRoomScreen = () => {
   const navigation = useNavigation();
   const { chatRoomId, chatRoomName } = route.params;
 
+    // Håndtere tilstand for chatrum, beskeder, input og billedevalg
   const [description, setDescription] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -23,11 +24,12 @@ const ChatRoomScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Sæt navigation title til chatRoomName
+   // Sætte navigationstitel til chatrummets navn
   useLayoutEffect(() => {
     navigation.setOptions({ title: chatRoomName });
   }, [navigation, chatRoomName]);
 
+    // Konvertere Firestore-tidsstempel til JavaScript Date-objekt
   const parseCreatedAt = (data) => {
     if (data.createdAt && typeof data.createdAt.toDate === 'function') {
       return data.createdAt.toDate();
@@ -38,6 +40,8 @@ const ChatRoomScreen = () => {
     }
   };
 
+    // Lytte til ændringer i beskeder i realtid og opdatere UI
+  // Sortere beskeder i kronologisk rækkefølge og rulle til bunden
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('chatRooms')
@@ -64,11 +68,13 @@ const ChatRoomScreen = () => {
         lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
         setMessages(fetchedMessages);
 
+          
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: false });
         }, 100);
       });
 
+ 
     return () => unsubscribe();
   }, [chatRoomId]);
 
@@ -77,6 +83,7 @@ const ChatRoomScreen = () => {
 
     setLoadingMore(true);
 
+    // Henter næste batch af beskeder fra Firestore
     const snapshot = await firestore()
       .collection('chatRooms')
       .doc(chatRoomId)
@@ -86,11 +93,13 @@ const ChatRoomScreen = () => {
       .limit(50)
       .get();
 
+      // Hvis der ikke er flere beskeder, opdaterer hasMore og afslutter funktionen
     if (snapshot.empty) {
       setHasMore(false);
       setLoadingMore(false);
       return;
     }
+
 
     const moreMessages = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -101,25 +110,33 @@ const ChatRoomScreen = () => {
       };
     }).filter(msg => msg.createdAt.getTime() !== 0);
 
+    // Opdaterer lastVisibleRef og sorterer de nye beskeder
+    // Tilføjer de nye beskeder til eksisterende beskeder i omvendt rækkefølge
     lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
     moreMessages.sort((a, b) => a.createdAt - b.createdAt);
     setMessages(prev => [...moreMessages, ...prev]);
     setLoadingMore(false);
   };
 
+  
   async function handleSend() {
     const user = auth().currentUser;
 
+    // Tjekker om brugeren er logget ind
     if (!newMessage && !imageUri) return;
 
+    // Hvis billedet er valgt, konverterer det til base64
     if (imageUri) {
       const base64Data = imageUri.split(',')[1];
+
+      // Tjekker om billedet er for stort
       if (base64Data.length > 1000000) {
         console.warn("Billedet er stadig for stort!");
         return;
       }
     }
-
+    // Opretter beskedobjektet med afsender-id, navn, oprettelsestidspunkt og tekst eller billede
+    // Sender beskeden til Firestore og opdaterer chatrummet med den seneste
     const messageToSend = {
       senderId: user.uid,
       senderName: user.displayName || user.email,
@@ -134,10 +151,12 @@ const ChatRoomScreen = () => {
       id: `local-${Date.now()}`
     };
 
+    // Tilføjer den lokale besked til beskedlisten for at opdatere UI straks
     setMessages(prev => [...prev, localMessageObj]);
     setNewMessage('');
     setImageUri(null);
 
+     // Opdatere chatrummets seneste aktivitetstidspunkt
     try {
       const chatRoomRef = firestore().collection('chatRooms').doc(chatRoomId);
 
@@ -151,7 +170,7 @@ const ChatRoomScreen = () => {
       console.error("Fejl ved afsendelse:", error);
     }
   }
-
+// Håndtere billedvalg fra kamera eller galleri
   const handleImagePick = async (fromCamera = false) => {
     const result = await (fromCamera ? launchCamera : launchImageLibrary)({
       mediaType: 'photo',
@@ -159,17 +178,20 @@ const ChatRoomScreen = () => {
       includeBase64: false,
     });
 
+    // Tjekker om billedvalget blev annulleret eller der opstod en fejl
     if (result.didCancel || result.errorCode) {
       console.log('Billedvalg annulleret eller fejl:', result.errorMessage);
       return;
     }
 
+    // Hvis der ikke er valgt et billede, afsluttes funktionen
     const asset = result.assets?.[0];
     if (!asset?.uri) {
       console.warn("Intet billede fundet.");
       return;
     }
 
+    // Hvis billedet er for stort, vises en advarsel
     try {
       const resizedImage = await ImageResizer.createResizedImage(
         asset.uri,
@@ -179,6 +201,7 @@ const ChatRoomScreen = () => {
         60,
       );
 
+      // Læser det valgte billede som base64
       const base64Data = await RNFS.readFile(resizedImage.uri, 'base64');
       setImageUri(`data:image/jpeg;base64,${base64Data}`);
     } catch (error) {
@@ -186,9 +209,12 @@ const ChatRoomScreen = () => {
     }
   };
 
+  // Renderer hver besked i FlatList
+  // Tjekker om beskeden er sendt af den nuværende bruger for at bestemme stilen
   const renderItem = ({ item }) => {
     const isMyMessage = item.senderId === auth().currentUser?.uid;
 
+     // Viser avatar eller initialer for afsenderen, hvis tilgængelig
     const avatar = item.senderAvatar
       ? item.senderAvatar
       : auth().currentUser?.photoURL
@@ -242,6 +268,8 @@ const ChatRoomScreen = () => {
     );
   };
 
+  // Returnerer UI for chatrummet
+  // Inkluderer en beskrivelse, FlatList for beskeder, inputfelt og knapper
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <KeyboardAvoidingView
@@ -302,6 +330,7 @@ const ChatRoomScreen = () => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   messageContainer: {

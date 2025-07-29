@@ -3,7 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Imag
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 
-
+// Skærm til oprettelse af ny bruger
+// Håndterer registrering via Firebase Authentication og oprettelse af bruger i Firestore
 const CreateAccountScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,6 +12,8 @@ const CreateAccountScreen = ({ navigation }) => {
   const [name, setName] = useState('');
 
 
+ // Opretter brugerkonto med email og password
+  // Opdaterer profil med navn og gemmer brugerdata i Firestore
   const onCreateAccountPress = async () => {
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
@@ -23,7 +26,6 @@ const CreateAccountScreen = ({ navigation }) => {
   
       await auth().currentUser?.reload();
   
-      //Tilføj bruger til Firestore
       await firestore()
         .collection('Users')
         .doc(auth().currentUser.uid)
@@ -36,12 +38,15 @@ const CreateAccountScreen = ({ navigation }) => {
   
       setErrorMessage('');
   
+       // Naviger til Home-skærm og nulstil navigation stack
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
   
+      
     } catch (error) {
+      // Håndter specifikke Firebase Auth fejl
       if (error.code === 'auth/email-already-in-use') {
         setErrorMessage('That email address is already in use!');
       } else if (error.code === 'auth/invalid-email') {
@@ -54,10 +59,13 @@ const CreateAccountScreen = ({ navigation }) => {
       console.error(error);
     }
   };  
-  return (
+
+  return (  
     <SafeAreaView style={styles.container}>
       <Image source={require('../assets/ConvoLogo.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>Create a New Account</Text>
+
+       {/* Input til email */}
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -66,6 +74,7 @@ const CreateAccountScreen = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
+       {/* Input til adgangskode */}
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -74,17 +83,24 @@ const CreateAccountScreen = ({ navigation }) => {
         secureTextEntry
         autoCapitalize="none"
       />
+
+       {/* Input til navn */}
       <TextInput
   style={styles.input}
   placeholder="Name"
   value={name}
   onChangeText={setName}
-/>
+      />
 
+       {/* Input til oprettelse af konto */}
       <TouchableOpacity style={styles.button} onPress={onCreateAccountPress}>
         <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>
+
+       {/* Vis fejlmeddelelse */}
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+        {/* Tilbage til login */}
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text style={styles.backText}>Back to Login</Text>
       </TouchableOpacity>
