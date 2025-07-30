@@ -1,15 +1,18 @@
+// components/Logo.tsx
 import React from 'react';
-import { Image, StyleSheet } from 'react-native';
+import { Image, StyleSheet, ImageStyle } from 'react-native';
 
-const Logo = () => {
-  return (
-    <Image
-      source={require('../assets/ConvoLogo.png')}
-      style={styles.logo}
-      resizeMode="contain"
-    />
-  );
+type LogoProps = {
+  style?: ImageStyle;
 };
+
+const Logo = ({ style }: LogoProps) => (
+  <Image
+    source={require('../assets/ConvoLogo.png')}
+    style={[styles.logo, style]}
+    resizeMode="contain"
+  />
+);
 
 const styles = StyleSheet.create({
   logo: {

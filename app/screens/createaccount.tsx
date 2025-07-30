@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Image } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import Logo from '../components/Logo';
+import ErrorMessage from '../components/ErrorMessage';
+import CreateAccountButton from '../components/CreateAccountButton';
+import CreateAccountForm from '../components/CreateAccountForm';
+import BackToLoginButton from '../components/BackToLoginButton';
+import TextInputField from '../components/TextInputFields';
+
 
 // Skærm til oprettelse af ny bruger
 // Håndterer registrering via Firebase Authentication og oprettelse af bruger i Firestore
@@ -12,20 +19,20 @@ const CreateAccountScreen = ({ navigation }) => {
   const [name, setName] = useState('');
 
 
- // Opretter brugerkonto med email og password
+  // Opretter brugerkonto med email og password
   // Opdaterer profil med navn og gemmer brugerdata i Firestore
   const onCreateAccountPress = async () => {
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       console.log('User account created & signed in!');
-  
+
       await auth().currentUser?.updateProfile({
         displayName: name,
         photoURL: null,
       });
-  
+
       await auth().currentUser?.reload();
-  
+
       await firestore()
         .collection('Users')
         .doc(auth().currentUser.uid)
@@ -35,16 +42,16 @@ const CreateAccountScreen = ({ navigation }) => {
           chatRooms: [],
           createdAt: firestore.FieldValue.serverTimestamp(),
         });
-  
+
       setErrorMessage('');
-  
-       // Naviger til Home-skærm og nulstil navigation stack
+
+      // Naviger til Home-skærm og nulstil navigation stack
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
-  
-      
+
+
     } catch (error) {
       // Håndter specifikke Firebase Auth fejl
       if (error.code === 'auth/email-already-in-use') {
@@ -58,52 +65,22 @@ const CreateAccountScreen = ({ navigation }) => {
       }
       console.error(error);
     }
-  };  
+  };
 
-  return (  
+  return (
     <SafeAreaView style={styles.container}>
-      <Image source={require('../assets/ConvoLogo.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.title}>Create a New Account</Text>
-
-       {/* Input til email */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+      <Logo style={{ width: 200, height: 200 }} />
+      <CreateAccountForm
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        name={name}
+        setName={setName}
       />
-       {/* Input til adgangskode */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-
-       {/* Input til navn */}
-      <TextInput
-  style={styles.input}
-  placeholder="Name"
-  value={name}
-  onChangeText={setName}
-      />
-
-       {/* Input til oprettelse af konto */}
-      <TouchableOpacity style={styles.button} onPress={onCreateAccountPress}>
-        <Text style={styles.buttonText}>Create Account</Text>
-      </TouchableOpacity>
-
-       {/* Vis fejlmeddelelse */}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-        {/* Tilbage til login */}
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>Back to Login</Text>
-      </TouchableOpacity>
+      <CreateAccountButton onPress={onCreateAccountPress} />
+      <ErrorMessage message={errorMessage} />
+      <BackToLoginButton onPress={() => navigation.goBack()} />
     </SafeAreaView>
   );
 };
