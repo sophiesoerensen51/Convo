@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import { Text, View, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
+import Logo from '../components/Logo';
+import EmailPasswordForm from '../components/EmailPasswordForm';
+import AuthButtons from '../components/AuthButtons';
+import GoogleLoginButton from '../components/GoogleLoginButton';
+import UserInfoDisplay from '../components/UserInfoDisplay';
 
+
+// Login-skærm med e-mail og Google login
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userInfo, setUserInfo] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  
+  // Logge ind med e-mail og adgangskode
   const onLoginPress = async () => {
     try {
       const userCredential = await auth().signInWithEmailAndPassword(email, password);
@@ -32,43 +39,56 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  // Logge ind eller oprette bruger med Google
   const onGoogleButtonPress = async () => {
     try {
-      await GoogleSignin.signOut(); // ryd gamle tokens
-  
+      await GoogleSignin.signOut(); // Ryd tidligere login-data
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  
-      // Log ind via Google
+
+      // Start Google-login flow
       const userInfo = await GoogleSignin.signIn();
       console.log('userInfo', userInfo);
-  
-      // Hent idToken eksplicit
+
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
-  
+
       if (!idToken) {
         throw new Error('No ID token found');
       }
-  
+
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       const userCredential = await auth().signInWithCredential(googleCredential);
       const signedInUser = userCredential.user;
-  
-      // Opdater profil hvis nødvendigt
+
+      // Opdatér Firebase-profil hvis nødvendigt
       if (!signedInUser.displayName || !signedInUser.photoURL) {
         await signedInUser.updateProfile({
           displayName: userInfo.user.name,
           photoURL: userInfo.user.photo,
         });
       }
-  
-      await signedInUser.reload();
-  
+
+      await signedInUser.reload(); // Hent nyeste brugerdata
+
       console.log('Google login success:', signedInUser);
-  
+
+      // Sikre at brugerdokument i Firestore findes
+      const userDocRef = firestore().collection('Users').doc(signedInUser.uid);
+      const userDoc = await userDocRef.get();
+
+      if (!userDoc.exists) {
+        await userDocRef.set({
+          name: signedInUser.displayName || '',
+          email: signedInUser.email || '',
+          chatRooms: [],
+          createdAt: firestore.FieldValue.serverTimestamp(),
+        });
+        console.log('Firestore user document created for:', signedInUser.uid);
+      }
+
       setUserInfo(signedInUser);
       setErrorMessage('');
-  
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
@@ -78,69 +98,42 @@ const LoginScreen = ({ navigation }) => {
       setErrorMessage('Google Sign-In failed. Try again.');
     }
   };
-  
-  
+
+
   return (
     <SafeAreaView style={styles.container}>
-      <Image
-        source={require('../assets/ConvoLogo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Logo />
 
+
+      {/* Vise brugerinfo hvis logget ind */}
       {userInfo && (
-        <View style={styles.userInfoContainer}>
-          <Text style={styles.userInfoText}>
-            Hello, {userInfo.displayName || 'user'}!
-          </Text>
-          <Text style={styles.userInfoText}>Email: {userInfo.email}</Text>
-        </View>
+        <UserInfoDisplay
+          displayName={userInfo.displayName}
+          email={userInfo.email}
+        />
       )}
+
+
+      {/* Formular til e-mail login */}
       <Text style={styles.title}>Login using Email</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+      <EmailPasswordForm
+        email={email}
+        password={password}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
+      {/* Login knap og oprettelse af konto knap */}
+      <AuthButtons
+        onLoginPress={onLoginPress}
+        onCreateAccountPress={() => navigation.navigate('CreateAccount')}
       />
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={onLoginPress}>
-          <Text style={styles.buttonText}>Log In</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: '#28A745' }]}
-          onPress={() => navigation.navigate('CreateAccount')}
-        >
-          <Text style={styles.buttonText}>Create Account</Text>
-        </TouchableOpacity>
-      </View>
-
+      {/* Vise fejlbesked */}
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.googleButton} onPress={onGoogleButtonPress}>
-          <Image
-            source={require('../assets/google.png')}
-            style={styles.googleLogo}
-          />
-          <Text style={styles.googleButtonText}>Sign in / Sign up with Google</Text>
-        </TouchableOpacity>
-      </View>
+      <GoogleLoginButton onPress={onGoogleButtonPress} />
+
     </SafeAreaView>
   );
 };
