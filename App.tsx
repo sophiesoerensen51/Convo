@@ -9,24 +9,27 @@ import HomeScreen from './app/screens/home';
 import ChatRoomScreen from './app/screens/chatroom';
 import { Platform } from 'react-native';
 
+// Konfigurerer Google Sign-In med web- og iOS-klient-id'er
 GoogleSignin.configure({
   webClientId: '547176052859-nkreic9g73837nhp127gj5jgr6e90mg7.apps.googleusercontent.com',
   iosClientId: '547176052859-0su3s7282k3qu6u6tncto53dibu7b4g9.apps.googleusercontent.com',
   offlineAccess: false,
 });
 
+// Opret stack-navigator
 const Stack = createNativeStackNavigator();
 
 const App = () => {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
+// Skjul splash-screen på iOS ved opstart
  useEffect(() => {
    if (Platform.OS === 'ios') {
      SplashScreen.hide();
    }
  }, []);
-  
-
+ 
+  // Definér skærmindstillinger for stack-navigator
   const scrOptions = {
     headerStyle: { backgroundColor: '#23422F' },
     headerTitleStyle: { color: 'white' },
@@ -34,6 +37,7 @@ const App = () => {
     headerTintColor: 'white',
   };
 
+  // Returner NavigationContainer med stack og skærmindstillinger
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={scrOptions}>

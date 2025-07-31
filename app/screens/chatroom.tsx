@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
-import {View, Image, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView} from 'react-native';
+import { View, Image, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -8,13 +8,15 @@ import library from '../assets/library.png';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import ImageResizer from 'react-native-image-resizer';
 import RNFS from 'react-native-fs';
+import MessageItem from '../components/MessageItem';
+
 
 const ChatRoomScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { chatRoomId, chatRoomName } = route.params;
 
-    // Håndtere tilstand for chatrum, beskeder, input og billedevalg
+  // Håndtere tilstand for chatrum, beskeder, input og billedevalg
   const [description, setDescription] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -24,12 +26,12 @@ const ChatRoomScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-   // Sætte navigationstitel til chatrummets navn
+  // Sætte navigationstitel til chatrummets navn
   useLayoutEffect(() => {
     navigation.setOptions({ title: chatRoomName });
   }, [navigation, chatRoomName]);
 
-    // Konvertere Firestore-tidsstempel til JavaScript Date-objekt
+  // Konvertere Firestore-tidsstempel til JavaScript Date-objekt
   const parseCreatedAt = (data) => {
     if (data.createdAt && typeof data.createdAt.toDate === 'function') {
       return data.createdAt.toDate();
@@ -40,7 +42,7 @@ const ChatRoomScreen = () => {
     }
   };
 
-    // Lytte til ændringer i beskeder i realtid og opdatere UI
+  // Lytte til ændringer i beskeder i realtid og opdatere UI
   // Sortere beskeder i kronologisk rækkefølge og rulle til bunden
   useEffect(() => {
     const unsubscribe = firestore()
@@ -68,13 +70,13 @@ const ChatRoomScreen = () => {
         lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
         setMessages(fetchedMessages);
 
-          
+
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: false });
         }, 100);
       });
 
- 
+
     return () => unsubscribe();
   }, [chatRoomId]);
 
@@ -93,7 +95,7 @@ const ChatRoomScreen = () => {
       .limit(50)
       .get();
 
-      // Hvis der ikke er flere beskeder, opdaterer hasMore og afslutter funktionen
+    // Hvis der ikke er flere beskeder, opdaterer hasMore og afslutter funktionen
     if (snapshot.empty) {
       setHasMore(false);
       setLoadingMore(false);
@@ -118,7 +120,7 @@ const ChatRoomScreen = () => {
     setLoadingMore(false);
   };
 
-  
+
   async function handleSend() {
     const user = auth().currentUser;
 
@@ -156,7 +158,7 @@ const ChatRoomScreen = () => {
     setNewMessage('');
     setImageUri(null);
 
-     // Opdatere chatrummets seneste aktivitetstidspunkt
+    // Opdatere chatrummets seneste aktivitetstidspunkt
     try {
       const chatRoomRef = firestore().collection('chatRooms').doc(chatRoomId);
 
@@ -170,7 +172,7 @@ const ChatRoomScreen = () => {
       console.error("Fejl ved afsendelse:", error);
     }
   }
-// Håndtere billedvalg fra kamera eller galleri
+  // Håndtere billedvalg fra kamera eller galleri
   const handleImagePick = async (fromCamera = false) => {
     const result = await (fromCamera ? launchCamera : launchImageLibrary)({
       mediaType: 'photo',
@@ -214,7 +216,7 @@ const ChatRoomScreen = () => {
   const renderItem = ({ item }) => {
     const isMyMessage = item.senderId === auth().currentUser?.uid;
 
-     // Viser avatar eller initialer for afsenderen, hvis tilgængelig
+    // Viser avatar eller initialer for afsenderen, hvis tilgængelig
     const avatar = item.senderAvatar
       ? item.senderAvatar
       : auth().currentUser?.photoURL
@@ -282,7 +284,7 @@ const ChatRoomScreen = () => {
         <FlatList
           ref={flatListRef}
           data={messages}
-          renderItem={renderItem}
+          renderItem={({ item }) => <MessageItem item={item} />}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 16 }}
@@ -293,6 +295,7 @@ const ChatRoomScreen = () => {
           }}
           scrollEventThrottle={100}
         />
+
 
         {imageUri && (
           <View style={{ alignItems: 'center', marginVertical: 10 }}>
