@@ -8,9 +8,9 @@ const CreateChatRoom = ({ navigation }) => {
     const [description, setDescription] = useState('');
     const [users, setUsers] = useState([]);
     const [selectedUsers, setSelectedUsers] = useState(new Set());
+    const [selectAll, setSelectAll] = useState(false);
 
     useEffect(() => {
-        // Hent alle brugere fra Firestore
         const fetchUsers = async () => {
             try {
                 const usersSnapshot = await firestore().collection('Users').get();
@@ -19,6 +19,10 @@ const CreateChatRoom = ({ navigation }) => {
                     ...doc.data(),
                 }));
                 setUsers(usersList);
+                // Som default marker alle brugere som valgt
+                const allUserIds = usersList.map(u => u.id);
+                setSelectedUsers(new Set(allUserIds));
+                setSelectAll(true);
             } catch (error) {
                 console.error('Fejl ved hentning af brugere:', error);
             }
@@ -28,15 +32,32 @@ const CreateChatRoom = ({ navigation }) => {
     }, []);
 
     const toggleUserSelection = (userId) => {
-        setSelectedUsers(prevSelected => {
-            const newSelected = new Set(prevSelected);
-            if (newSelected.has(userId)) {
-                newSelected.delete(userId);
+        if (userId === 'select_all') {
+            // Hvis select all toggles
+            if (selectAll) {
+                // Fjern alle
+                setSelectedUsers(new Set());
+                setSelectAll(false);
             } else {
-                newSelected.add(userId);
+                // Vælg alle
+                const allUserIds = users.map(u => u.id);
+                setSelectedUsers(new Set(allUserIds));
+                setSelectAll(true);
             }
-            return newSelected;
-        });
+        } else {
+            setSelectedUsers(prevSelected => {
+                const newSelected = new Set(prevSelected);
+                if (newSelected.has(userId)) {
+                    newSelected.delete(userId);
+                } else {
+                    newSelected.add(userId);
+                }
+
+                // Opdater selectAll-status baseret på selection
+                setSelectAll(newSelected.size === users.length);
+                return newSelected;
+            });
+        }
     };
 
     const handleCreateRoom = async () => {
@@ -63,7 +84,6 @@ const CreateChatRoom = ({ navigation }) => {
                 members.push(user.uid);
             }
 
-            // Opret chatrummet med medlemmer
             const newRoomRef = await firestore().collection('chatRooms').add({
                 name: roomName.trim(),
                 description: description.trim(),
@@ -74,7 +94,6 @@ const CreateChatRoom = ({ navigation }) => {
                 lastMessageTimestamp: firestore.FieldValue.serverTimestamp(),
             });
 
-            // Opdater chatRooms for alle medlemmer
             const batch = firestore().batch();
             members.forEach(uid => {
                 const userRef = firestore().collection('Users').doc(uid);
@@ -94,22 +113,33 @@ const CreateChatRoom = ({ navigation }) => {
     };
 
     const renderUserItem = ({ item }) => {
+        // Tjek om vi rendrer den "Tilføj alle brugere" checkbox
+        if (item.id === 'select_all') {
+            return (
+                <TouchableOpacity style={styles.userItem} onPress={() => toggleUserSelection('select_all')}>
+                    <View style={[styles.checkbox, selectAll && styles.checkboxSelected]}>
+                        {selectAll && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={styles.userName}>Tilføj alle brugere</Text>
+                </TouchableOpacity>
+            );
+        }
+
         const isSelected = selectedUsers.has(item.id);
         return (
-            <TouchableOpacity
-                style={styles.userItem}
-                onPress={() => toggleUserSelection(item.id)}>
-
+            <TouchableOpacity style={styles.userItem} onPress={() => toggleUserSelection(item.id)}>
                 <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
                     {isSelected && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.userName}>
                     {item.displayName?.trim() || item.email?.trim() || 'Ukendt bruger'}
                 </Text>
-                
             </TouchableOpacity>
         );
     };
+
+    // Tilføj select_all item øverst
+    const listData = [{ id: 'select_all' }, ...users];
 
     return (
         <View style={styles.container}>
@@ -133,10 +163,10 @@ const CreateChatRoom = ({ navigation }) => {
             <Text style={styles.selectUsersTitle}>Vælg brugere til chatrummet:</Text>
 
             <FlatList
-                data={users}
+                data={listData}
                 keyExtractor={(item) => item.id}
                 renderItem={renderUserItem}
-                extraData={selectedUsers}
+                extraData={[selectedUsers, selectAll]}
                 style={styles.usersList}
             />
 
@@ -179,7 +209,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     usersList: {
-        maxHeight: 250, // Begræns højde, så der kommer scroll
+        maxHeight: 250,
         marginBottom: 16,
     },
     userItem: {

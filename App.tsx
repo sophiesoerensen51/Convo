@@ -8,6 +8,7 @@ import CreateAccountScreen from './app/screens/createaccount';
 import HomeScreen from './app/screens/home';
 import ChatRoomScreen from './app/screens/chatroom';
 import CreateChatRoom from './app/screens/createchatroom';
+import ChatRoomSettings from './app/screens/chatroomsettings';
 import { Platform } from 'react-native';
 
 // Konfigurerer Google Sign-In med web- og iOS-klient-id'er
@@ -47,6 +48,7 @@ const App = () => {
         <Stack.Screen name="Home" options={{ title: 'Chatrooms' }} component={HomeScreen} />
         <Stack.Screen name="ChatRoomScreen" component={ChatRoomScreen} />
        <Stack.Screen name="CreateChatRoom" options={{ title: 'Create Chatroom' }} component={CreateChatRoom} />
+        <Stack.Screen name="ChatRoomSettings" options={{ title: 'Chatroom Settings' }} component={ChatRoomSettings} />
       </Stack.Navigator>
     </NavigationContainer>
   );

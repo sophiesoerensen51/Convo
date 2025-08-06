@@ -3,89 +3,92 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Image
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 
-
-// Skærm til visning af chatrum
 const HomeScreen = ({ navigation }) => {
-  const [user, setUser] = useState(null);//Gemmer den nuværende bruger
-  const [chatRooms, setChatRooms] = useState([]);//Gemmer brugerens chatrum
+  const [user, setUser] = useState(null);
+  const [chatRooms, setChatRooms] = useState([]);
 
-   // Hent brugerdata og abonnér på brugerens chatrum
   useEffect(() => {
-  const currentUser = auth().currentUser;
-  if (!currentUser) {
-    console.log("No authenticated user found");
-    return;
-  }
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      console.log("No authenticated user found");
+      return;
+    }
 
-  setUser(currentUser);
+    setUser(currentUser);
 
-      // Udføre datamigrering: tilføje 'lastMessageTimestamp' hvis kun 'lastMessageAt' findes
-  firestore()
-    .collection('chatRooms')
-    .get()
-    .then(querySnapshot => {
-      querySnapshot.forEach(doc => {
-        const data = doc.data();
-        if (!data.lastMessageTimestamp && data.lastMessageAt) {
-          console.log(`Migrating chatRoom ${doc.id}`);
-          doc.ref.update({ lastMessageTimestamp: data.lastMessageAt });
+    // Migration: tilføj lastMessageTimestamp hvis kun lastMessageAt findes
+    firestore()
+      .collection('chatRooms')
+      .get()
+      .then(querySnapshot => {
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          if (!data.lastMessageTimestamp && data.lastMessageAt) {
+            console.log(`Migrating chatRoom ${doc.id}`);
+            doc.ref.update({ lastMessageTimestamp: data.lastMessageAt });
+          }
+        });
+      })
+      .catch(error => console.error('Migration error:', error));
+
+    let cleanupRooms = () => { };
+
+    const unsubscribeUser = firestore()
+      .collection('Users')
+      .doc(currentUser.uid)
+      .onSnapshot(userDoc => {
+        if (!userDoc.exists) {
+          console.log("User document does not exist");
+          return;
         }
-      });
-    })
-    .catch(error => console.error('Migration error:', error));
 
-  let cleanupRooms = () => {};
+        const userData = userDoc.data();
+        const userChatRoomIds = userData.chatRooms || [];
 
-  const unsubscribeUser = firestore()
-    .collection('Users')
-    .doc(currentUser.uid)
-    .onSnapshot(userDoc => {
-      if (!userDoc.exists) {
-        console.log("User document does not exist");
-        return;
-      }
+        if (userChatRoomIds.length === 0) {
+          setChatRooms([]);
+          return;
+        }
 
-      const userData = userDoc.data();
-      const userChatRoomIds = userData.chatRooms || [];
+        const unsubscribeRooms = userChatRoomIds.map((roomId) => {
+          return firestore()
+            .collection('chatRooms')
+            .doc(roomId)
+            .onSnapshot(docSnapshot => {
+              if (!docSnapshot.exists) {
+                setChatRooms(prevRooms => prevRooms.filter(r => r.id !== roomId));
+                return;
+              }
 
-      if (userChatRoomIds.length === 0) {
-        setChatRooms([]);
-        return;
-      }
+              const updatedRoom = { id: docSnapshot.id, ...docSnapshot.data() };
 
-      const unsubscribeRooms = userChatRoomIds.map((roomId) => {
-        return firestore()
-          .collection('chatRooms')
-          .doc(roomId)
-          .onSnapshot(docSnapshot => {
-            if (!docSnapshot.exists) return;
+              if (!updatedRoom.name) return;
 
-            const updatedRoom = { id: docSnapshot.id, ...docSnapshot.data() };
+              setChatRooms(prevRooms => {
+                const otherRooms = prevRooms.filter(r => r.id !== updatedRoom.id);
+                const updatedList = [...otherRooms, updatedRoom];
 
-            setChatRooms(prevRooms => {
-              const otherRooms = prevRooms.filter(r => r.id !== updatedRoom.id);
-              const updatedList = [...otherRooms, updatedRoom];
-
-              return updatedList.sort((a, b) => {
-                const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-                const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-                return bTime - aTime;
+                return updatedList
+                  .filter(room => room.name)
+                  .sort((a, b) => {
+                    const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+                    const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+                    return bTime - aTime;
+                  });
               });
             });
-          });
+        });
+
+        cleanupRooms = () => {
+          unsubscribeRooms.forEach(unsub => unsub());
+        };
       });
 
-    
-      cleanupRooms = () => {
-        unsubscribeRooms.forEach(unsub => unsub());
-      };
-    });
-
-  return () => {
-    unsubscribeUser();
-    cleanupRooms();
-  };
-}, []);
+    return () => {
+      unsubscribeUser();
+      cleanupRooms();
+    };
+  }, []);
 
   const handleChatPress = (chatRoom) => {
     navigation.navigate('ChatRoomScreen', {
@@ -111,8 +114,15 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.chatRoomContent}>
         <View>
           <Text style={styles.chatRoomText}>{item.name}</Text>
-          {item.description && (
-            <Text style={styles.chatRoomDescription}>{item.description}</Text>
+          {item.lastMessage && (
+            <Text style={styles.chatRoomDescription} numberOfLines={1}>
+              {item.lastMessage}
+            </Text>
+          )}
+          {!item.lastMessage && item.description && (
+            <Text style={styles.chatRoomDescription} numberOfLines={1}>
+              {item.description}
+            </Text>
           )}
         </View>
         <Image
@@ -132,30 +142,30 @@ const HomeScreen = ({ navigation }) => {
           </Text>
         </View>
       )}
-  
+
       <FlatList
         data={chatRooms}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
       />
-  
+
       <TouchableOpacity style={styles.button} onPress={onLogoutPress}>
         <Text style={styles.buttonText}>Log Out</Text>
       </TouchableOpacity>
-  
+
       <TouchableOpacity
-        onPress={() => navigation.navigate('CreateChatRoom')}
-        style={styles.floatingPlus}
-      >
-        <Image
-          source={require('../assets/plus.png')}
-          style={styles.plusIcon}
-        />
-      </TouchableOpacity>
+  onPress={() => navigation.navigate('CreateChatRoom')}
+  style={styles.floatingPlus}
+>
+  <Image
+    source={require('../assets/plus.png')} // Sørg for dette er det sorte plus-ikon
+    style={styles.plusIcon}
+  />
+</TouchableOpacity>
+
     </SafeAreaView>
   );
-  
 };
 
 const styles = StyleSheet.create({
@@ -212,7 +222,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   chevronIcon: {
     width: 24,
@@ -242,16 +252,21 @@ const styles = StyleSheet.create({
   },
   floatingPlus: {
     position: 'absolute',
-    top: 20,
+    top: 20,         
     right: 20,
-    zIndex: 10,
+    width: 40,     
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: 'transparent',
+    elevation: 0,
   },
-  
   plusIcon: {
-    width: 28,
-    height: 28,
-  },
-  
+    width: 24,
+    height: 24,
+    tintColor: 'black',  
+  },  
 });
 
 export default HomeScreen;

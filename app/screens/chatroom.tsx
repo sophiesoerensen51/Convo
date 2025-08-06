@@ -5,6 +5,7 @@ import auth from '@react-native-firebase/auth';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import camara from '../assets/camera.png';
 import library from '../assets/library.png';
+import settings from '../assets/settings.png';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import ImageResizer from 'react-native-image-resizer';
 import RNFS from 'react-native-fs';
@@ -28,8 +29,23 @@ const ChatRoomScreen = () => {
 
   // Sætte navigationstitel til chatrummets navn
   useLayoutEffect(() => {
-    navigation.setOptions({ title: chatRoomName });
-  }, [navigation, chatRoomName]);
+    navigation.setOptions({
+      title: chatRoomName,
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ChatRoomSettings', { chatRoomId })}
+          style={{ marginRight: 16 }}
+        >
+          <Image
+            source={settings}
+            style={{ width: 24, height: 24 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, chatRoomName, chatRoomId]);
+  
 
   // Konvertere Firestore-tidsstempel til JavaScript Date-objekt
   const parseCreatedAt = (data) => {
