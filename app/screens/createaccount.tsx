@@ -37,11 +37,12 @@ const CreateAccountScreen = ({ navigation }) => {
         .collection('Users')
         .doc(auth().currentUser.uid)
         .set({
-          name: name,
+          displayName: name,
           email: email,
           chatRooms: [],
           createdAt: firestore.FieldValue.serverTimestamp(),
         });
+
 
       setErrorMessage('');
 

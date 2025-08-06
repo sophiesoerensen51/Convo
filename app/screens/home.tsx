@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Image
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 
+
 // Skærm til visning af chatrum
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);//Gemmer den nuværende bruger
@@ -125,22 +126,36 @@ const HomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       {user && (
-        <Text style={styles.welcomeText}>
-          Velkommen, {user.displayName?.split(' ')[0] || user.email}
-        </Text>
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>
+            Velkommen, {user.displayName?.split(' ')[0] || user.email}
+          </Text>
+        </View>
       )}
+  
       <FlatList
         data={chatRooms}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
       />
-
+  
       <TouchableOpacity style={styles.button} onPress={onLogoutPress}>
         <Text style={styles.buttonText}>Log Out</Text>
       </TouchableOpacity>
+  
+      <TouchableOpacity
+        onPress={() => navigation.navigate('CreateChatRoom')}
+        style={styles.floatingPlus}
+      >
+        <Image
+          source={require('../assets/plus.png')}
+          style={styles.plusIcon}
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
+  
 };
 
 const styles = StyleSheet.create({
@@ -218,6 +233,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333',
   },
+  welcomeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  floatingPlus: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  
+  plusIcon: {
+    width: 28,
+    height: 28,
+  },
+  
 });
 
 export default HomeScreen;
