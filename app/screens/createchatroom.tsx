@@ -90,9 +90,11 @@ const CreateChatRoom = ({ navigation }) => {
                 createdBy: user.uid,
                 createdAt: firestore.FieldValue.serverTimestamp(),
                 members,
+                admins: [user.uid], //Tilføj admin-felt
                 lastMessageAt: firestore.FieldValue.serverTimestamp(),
                 lastMessageTimestamp: firestore.FieldValue.serverTimestamp(),
             });
+            
 
             const batch = firestore().batch();
             members.forEach(uid => {

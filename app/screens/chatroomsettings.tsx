@@ -7,10 +7,32 @@ const ChatRoomSettings = ({ route, navigation }) => {
   const { chatRoomId } = route.params;
 
   const [chatRoomName, setChatRoomName] = useState('');
+  const [chatRoomDescription, setChatRoomDescription] = useState('');
+
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [selectAll, setSelectAll] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [admins, setAdmins] = useState([]);
+
+  useEffect(() => {
+    const fetchRoomData = async () => {
+      try {
+        const roomDoc = await firestore().collection('chatRooms').doc(chatRoomId).get();
+        const roomData = roomDoc.data();
+        const currentUserId = auth().currentUser.uid;
+        const userIsAdmin =
+          (Array.isArray(roomData?.admins) && roomData.admins.includes(currentUserId)) ||
+          roomData?.creator === currentUserId;
+        setIsAdmin(userIsAdmin);
+      } catch (error) {
+        console.error('Fejl ved hentning af admin-status:', error);
+      }
+    };
+
+    fetchRoomData();
+  }, [chatRoomId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,12 +50,17 @@ const ChatRoomSettings = ({ route, navigation }) => {
         const chatRoomData = chatRoomDoc.data();
 
         setChatRoomName(chatRoomData?.name || '');
+        setChatRoomDescription(chatRoomData?.description || ''); // Sæt description
         setUsers(usersList);
 
-        // Marker alle brugere som standard (sæt i selectedUsers)
         const initialSelected = new Set(chatRoomData?.members || usersList.map(u => u.id));
         setSelectedUsers(initialSelected);
         setSelectAll(initialSelected.size === usersList.length);
+
+        const adminIds = chatRoomData?.admins || (chatRoomData?.creator ? [chatRoomData.creator] : []);
+        const adminUsers = usersList.filter(user => adminIds.includes(user.id));
+        setAdmins(adminUsers);
+
         setLoading(false);
       } catch (error) {
         console.error('Fejl ved hentning af data:', error);
@@ -52,8 +79,6 @@ const ChatRoomSettings = ({ route, navigation }) => {
       } else {
         newSelected.add(userId);
       }
-
-      // Opdater selectAll, hvis ikke alle er valgt
       setSelectAll(newSelected.size === users.length);
       return newSelected;
     });
@@ -61,11 +86,9 @@ const ChatRoomSettings = ({ route, navigation }) => {
 
   const toggleSelectAll = () => {
     if (selectAll) {
-      // Fjern alle
       setSelectedUsers(new Set());
       setSelectAll(false);
     } else {
-      // Tilføj alle
       setSelectedUsers(new Set(users.map(u => u.id)));
       setSelectAll(true);
     }
@@ -78,18 +101,18 @@ const ChatRoomSettings = ({ route, navigation }) => {
     }
 
     if (selectedUsers.size === 0) {
-      Alert.alert('Fejl', 'Der skal være mindst én medlem i chatrummet.');
+      Alert.alert('Fejl', 'Der skal være mindst ét medlem i chatrummet.');
       return;
     }
 
     try {
       await firestore().collection('chatRooms').doc(chatRoomId).update({
         name: chatRoomName.trim(),
+        description: chatRoomDescription.trim(),  // Gem beskrivelse også
         members: Array.from(selectedUsers),
         lastMessageAt: firestore.FieldValue.serverTimestamp(),
       });
 
-      // Opdater chatRooms for alle brugere (tilføj/fjern chatRoomId)
       const batch = firestore().batch();
       const allUserDocs = await firestore().collection('Users').get();
 
@@ -127,7 +150,6 @@ const ChatRoomSettings = ({ route, navigation }) => {
             try {
               await firestore().collection('chatRooms').doc(chatRoomId).delete();
 
-              // Fjern chatRoomId fra alle brugere
               const allUserDocs = await firestore().collection('Users').get();
               const batch = firestore().batch();
 
@@ -152,16 +174,14 @@ const ChatRoomSettings = ({ route, navigation }) => {
 
   const renderUserItem = ({ item }) => {
     const isSelected = selectedUsers.has(item.id);
-
-    // Forhindre, at den aktuelle bruger kan fjernes fra rummet (valgfrit)
     const currentUserId = auth().currentUser?.uid;
     const disabled = item.id === currentUserId;
 
     return (
       <TouchableOpacity
-        style={[styles.userItem, disabled && { opacity: 0.5 }]}
-        onPress={() => !disabled && toggleUserSelection(item.id)}
-        disabled={disabled}
+        style={[styles.userItem, (!isAdmin || disabled) && { opacity: 0.5 }]}
+        onPress={() => isAdmin && !disabled && toggleUserSelection(item.id)}
+        disabled={!isAdmin || disabled}
       >
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
           {isSelected && <Text style={styles.checkmark}>✓</Text>}
@@ -175,7 +195,11 @@ const ChatRoomSettings = ({ route, navigation }) => {
   };
 
   const renderSelectAllItem = () => (
-    <TouchableOpacity style={styles.userItem} onPress={toggleSelectAll}>
+    <TouchableOpacity
+      style={[styles.userItem, !isAdmin && { opacity: 0.5 }]}
+      onPress={() => isAdmin && toggleSelectAll()}
+      disabled={!isAdmin}
+    >
       <View style={[styles.checkbox, selectAll && styles.checkboxSelected]}>
         {selectAll && <Text style={styles.checkmark}>✓</Text>}
       </View>
@@ -195,11 +219,38 @@ const ChatRoomSettings = ({ route, navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Indstillinger for chatrum</Text>
 
+      {admins.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Admin{admins.length > 1 ? 's' : ''}:</Text>
+          {admins.map(admin => (
+            <Text key={admin.id} style={{ fontSize: 14, color: '#007AFF' }}>
+              {admin.displayName || admin.email || 'Ukendt bruger'}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {!isAdmin && (
+        <Text style={{ color: 'gray', fontStyle: 'italic', marginBottom: 10 }}>
+          Du har ikke tilladelse til at redigere dette chatrum.
+        </Text>
+      )}
+
       <TextInput
         style={styles.input}
         value={chatRoomName}
         onChangeText={setChatRoomName}
         placeholder="Navn på chatrum"
+        editable={isAdmin}
+      />
+
+      <TextInput
+        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+        value={chatRoomDescription}
+        onChangeText={setChatRoomDescription}
+        placeholder="Beskrivelse af chatrum"
+        multiline
+        editable={isAdmin}
       />
 
       <Text style={styles.selectUsersTitle}>Vælg medlemmer:</Text>
@@ -212,12 +263,20 @@ const ChatRoomSettings = ({ route, navigation }) => {
         style={styles.usersList}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSaveChanges}>
+      <TouchableOpacity
+        style={[styles.button, !isAdmin && { backgroundColor: '#ccc' }]}
+        onPress={handleSaveChanges}
+        disabled={!isAdmin}
+      >
         <Text style={styles.buttonText}>Gem ændringer</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDeleteRoom}>
-        <Text style={styles.deleteButtonText}>Slet chatrum</Text>
+      <TouchableOpacity
+        onPress={handleDeleteRoom}
+        disabled={!isAdmin}
+        style={{ opacity: isAdmin ? 1 : 0.4, marginTop: 16 }}
+      >
+        <Text style={[styles.buttonText, { color: '#FF3B30' }]}>Slet chatrum</Text>
       </TouchableOpacity>
     </View>
   );
@@ -288,15 +347,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  deleteButton: {
-    backgroundColor: '#FF3B30',
-  },
-  deleteButtonText: {
     color: '#fff',
     fontSize: 18,
     textAlign: 'center',
