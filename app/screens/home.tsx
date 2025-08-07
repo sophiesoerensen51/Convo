@@ -3,8 +3,28 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Image
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import ChatRoomItem from '../components/ChatRoomItem';
+import { useLayoutEffect } from 'react';
+import settings from '../assets/settings.png';
 
 const HomeScreen = ({ navigation }) => {
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Hjem', // Eller hvad du vil kalde din header
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('UserSettings')}
+          style={{ marginRight: 16 }}
+        >
+          <Image
+            source={settings}
+            style={{ width: 24, height: 24 }}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
   const [user, setUser] = useState(null);
   const [chatRooms, setChatRooms] = useState([]);
   const [error, setError] = useState('');
@@ -147,11 +167,6 @@ const HomeScreen = ({ navigation }) => {
        Tryk på plusset for at oprette et nyt chatrum.
      </Text>
       )}
-
-
-      <TouchableOpacity style={styles.button} onPress={onLogoutPress}>
-        <Text style={styles.buttonText}>Log Out</Text>
-      </TouchableOpacity>
 
       <TouchableOpacity
         onPress={() => navigation.navigate('CreateChatRoom')}
