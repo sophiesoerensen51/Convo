@@ -29,21 +29,24 @@ const UserSettings = ({ navigation }) => {
 
   // Opdater Firebase brugerens displayName
   const updateDisplayName = async () => {
-    // Tjek at navnet ikke er tomt
     if (displayName.trim() === '') {
       Alert.alert('Fejl', 'Navnet kan ikke være tomt.');
       return;
     }
-    setUpdatingName(true); // Vis loading state på knappen
+  
+    setUpdatingName(true);
     try {
       await user.updateProfile({ displayName: displayName.trim() });
+      await user.reload();
+  
       Alert.alert('Succes', 'Brugernavn opdateret!');
     } catch (error) {
       console.error('Update displayName error:', error);
       Alert.alert('Fejl', 'Kunne ikke opdatere brugernavn. Prøv igen.');
     }
-    setUpdatingName(false); 
+    setUpdatingName(false);
   };
+  
 
   // Opdater Firebase brugerens adgangskode
   const updatePassword = async () => {

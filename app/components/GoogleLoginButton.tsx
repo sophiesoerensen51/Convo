@@ -16,7 +16,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onPress }) => (
         source={require('../assets/google.png')}
         style={styles.googleLogo}
       />
-      {/* Tekst der forklarer, hvad knappen gør */}
+      {/* Teksten på knappen */}
       <Text style={styles.googleButtonText}>Sign in / Sign up with Google</Text>
     </TouchableOpacity>
   </View>
