@@ -7,40 +7,40 @@ import ErrorMessage from '../components/ErrorMessage';
 import CreateAccountButton from '../components/CreateAccountButton';
 import CreateAccountForm from '../components/CreateAccountForm';
 import BackToLoginButton from '../components/BackToLoginButton';
-import TextInputField from '../components/TextInputFields';
 
-
-// Skærm til oprettelse af ny bruger
 // Håndterer registrering via Firebase Authentication og oprettelse af bruger i Firestore
 const CreateAccountScreen = ({ navigation }) => {
+
+  // State til inputfelter og statusbeskeder
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
- 
-
-  // Opretter brugerkonto med email og password
-  // Opdaterer profil med navn og gemmer brugerdata i Firestore
+  // Funktion der kaldes ved tryk på "Opret konto" knappen
+  // Tjekker inputfelter, opretter bruger i Firebase Auth og gemmer brugerdata i Firestore
   const onCreateAccountPress = async () => {
     if (!email || !password || !name) {
-      setErrorMessage('Udfyld venligst alle felter.');
+      setErrorMessage('Udfyld venligst alle felter.');  // Validering af input
       return;
     }  
-    setLoading(true);
-    setErrorMessage('');
+    setLoading(true);      
+    setErrorMessage('');    
     try {
+      // Opret bruger med email og password i Firebase Authentication
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       console.log('User account created & signed in!');
 
+      // Opdater brugerprofil med displayName
       await auth().currentUser?.updateProfile({
         displayName: name,
         photoURL: null,
       });
 
-      await auth().currentUser?.reload();
+      await auth().currentUser?.reload();  
 
+      // Opret bruger dokument i Firestore med data
       await firestore()
         .collection('Users')
         .doc(auth().currentUser.uid)
@@ -51,38 +51,38 @@ const CreateAccountScreen = ({ navigation }) => {
           createdAt: firestore.FieldValue.serverTimestamp(),
         });
 
+      setErrorMessage(''); 
 
-      setErrorMessage('');
-
-      // Naviger til Home-skærm og nulstil navigation stack
+      // Naviger til Home-skærm og nulstil navigation stack 
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
 
-
     } catch (error) {
-      // Håndter specifikke Firebase Auth fejl
+      // Håndter almindelige Firebase Auth fejl og vis fejlbeskeder
       if (error.code === 'auth/email-already-in-use') {
-        setErrorMessage('That email address is already in use!');
+        setErrorMessage('Denne email-adresse er allerede i brug!');
       } else if (error.code === 'auth/invalid-email') {
-        setErrorMessage('That email address is invalid!');
+        setErrorMessage('Email-adressen er ugyldig!');
       } else if (error.code === 'auth/weak-password') {
-        setErrorMessage('Password should be at least 6 characters.');
+        setErrorMessage('Adgangskoden skal være mindst 6 tegn.');
       } else {
-        setErrorMessage('Account creation failed. Please try again.');
+        setErrorMessage('Oprettelse af konto mislykkedes. Prøv igen.');
       }
-      console.error(error);
-    
-    } finally {
-      setLoading(false);
-    }
+      console.error(error);  
 
+    } finally {
+      setLoading(false);  
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Logo komponent */}
       <Logo style={{ width: 200, height: 200 }} />
+
+      {/* Formular til indtastning af navn, email og password */}
       <CreateAccountForm
         email={email}
         setEmail={setEmail}
@@ -91,8 +91,14 @@ const CreateAccountScreen = ({ navigation }) => {
         name={name}
         setName={setName}
       />
+
+      {/* Knap til at oprette konto */}
       <CreateAccountButton onPress={onCreateAccountPress} loading={loading} />
+
+      {/* Vis fejlbesked hvis der opstår fejl */}
       <ErrorMessage message={errorMessage} />
+
+      {/* Knap til at gå tilbage til login skærmen */}
       <BackToLoginButton onPress={() => navigation.goBack()} />
     </SafeAreaView>
   );

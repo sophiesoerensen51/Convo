@@ -3,16 +3,21 @@ import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-nat
 
 interface CreateAccountButtonProps {
   onPress: () => void;
-  loading?: boolean; // valgfri prop til loading state
+  loading?: boolean; // Valgfri prop: hvis true, vises en spinner og knappen deaktiveres
 }
 
+/**
+ * En knapkomponent til oprettelse af en konto.
+ * Viser en loading-spinner, når `loading` er true, og forhindrer tryk.
+ */
 const CreateAccountButton: React.FC<CreateAccountButtonProps> = ({ onPress, loading = false }) => {
   return (
     <TouchableOpacity
-      style={[styles.button, loading && styles.buttonDisabled]}
+      style={[styles.button, loading && styles.buttonDisabled]} // Grå farve hvis loading
       onPress={onPress}
-      disabled={loading}
+      disabled={loading} // Forhindrer tryk når loading er aktiv
     >
+      {/* Viser spinner hvis der loades, ellers knaptekst */}
       {loading ? (
         <ActivityIndicator color="#fff" />
       ) : (

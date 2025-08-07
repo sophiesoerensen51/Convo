@@ -8,16 +8,17 @@ import settings from '../assets/settings.png';
 
 const HomeScreen = ({ navigation }) => {
 
+  // Sætter navigationens header med titel og et ikon til usersettings 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Hjem', // Eller hvad du vil kalde din header
+      title: 'Hjem', 
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => navigation.navigate('UserSettings')}
+          onPress={() => navigation.navigate('UserSettings')} // Navigerer til usersettings-skærm
           style={{ marginRight: 16 }}
         >
           <Image
-            source={settings}
+            source={settings} 
             style={{ width: 24, height: 24 }}
             resizeMode="contain"
           />
@@ -25,19 +26,21 @@ const HomeScreen = ({ navigation }) => {
       ),
     });
   }, [navigation]);
+
+  // State til den aktuelle bruger, chatrum, fejlbesked og loading-status
   const [user, setUser] = useState(null);
   const [chatRooms, setChatRooms] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-
+  // useEffect til at hente brugerdata og tilknyttede chatrum fra Firestore
   useEffect(() => {
     const currentUser = auth().currentUser;
-    if (!currentUser) return;
+    if (!currentUser) return; 
 
     setUser(currentUser);
 
-    // Migration (evt. pak det ud i en separat funktion)
+    // Migration: Opdatering af felt 'lastMessageTimestamp' hvis det mangler i chatrum
     firestore()
       .collection('chatRooms')
       .get()
@@ -54,10 +57,13 @@ const HomeScreen = ({ navigation }) => {
         setError('Kunne ikke migrere chatrum.');
       });
 
+    
     const userDocRef = firestore().collection('Users').doc(currentUser.uid);
 
+    // Lytter til ændringer i brugerens dokument 
     const unsubscribeUser = userDocRef.onSnapshot(userDoc => {
       if (!userDoc.exists) {
+        // Hvis brugerdata ikke findes, sæt tom liste og stop loading
         setChatRooms([]);
         setLoading(false);
         return;
@@ -66,15 +72,18 @@ const HomeScreen = ({ navigation }) => {
       const userChatRoomIds = userDoc.data().chatRooms || [];
 
       if (userChatRoomIds.length === 0) {
+        // Hvis brugeren ikke er medlem af nogen chatrum
         setChatRooms([]);
         setLoading(false);
         return;
       }
 
+      // Henter chatrum hvor bruger er medlem baseret på chatroom IDs
       const chatRoomsQuery = firestore()
         .collection('chatRooms')
         .where(firestore.FieldPath.documentId(), 'in', userChatRoomIds);
 
+      // Lytter til chatrum opdateringer i realtid
       const unsubscribeRooms = chatRoomsQuery.onSnapshot(
         snapshot => {
           const rooms = snapshot.docs.map(doc => ({
@@ -82,6 +91,7 @@ const HomeScreen = ({ navigation }) => {
             ...doc.data(),
           }));
 
+          // Sorter chatrum efter seneste beskedstidspunkt, nyeste først
           rooms.sort((a, b) => {
             const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
             const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
@@ -93,24 +103,27 @@ const HomeScreen = ({ navigation }) => {
           setError('');
         },
         err => {
+          // Håndter fejl i chatrum-lytteren
           console.error('ChatRooms listener error:', err);
           setError('Kunne ikke hente chatrum.');
           setLoading(false);
         }
       );
 
+      // Stopper med at lytte ved at unsubscribe, når komponenten fjernes eller dependencies ændres
       return () => unsubscribeRooms();
     }, err => {
+      // Håndter fejl i brugerdata-lytteren
       console.error('User listener error:', err);
       setError('Kunne ikke hente brugerdata.');
       setLoading(false);
     });
 
+    // Stopper med at lytte til brugerdata ved at unsubscribe, når komponenten fjernes
     return () => unsubscribeUser();
   }, []);
 
-
-
+  // Navigerer til valgt chatrum ved tryk på chatrum i listen
   const handleChatPress = (chatRoom) => {
     navigation.navigate('ChatRoomScreen', {
       chatRoomId: chatRoom.id,
@@ -118,25 +131,15 @@ const HomeScreen = ({ navigation }) => {
     });
   };
 
-  const onLogoutPress = async () => {
-    try {
-      await auth().signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'LoginScreen' }],
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
-
+  // Renderer hvert chatrum i FlatList
   const renderItem = ({ item }) => (
     <ChatRoomItem chatRoom={item} onPress={() => handleChatPress(item)} />
   );
 
-
   return (
     <SafeAreaView style={styles.container}>
+
+      {/* Viser velkomsttekst med brugerens fornavn eller email */}
       {user && (
         <View style={styles.welcomeContainer}>
           <Text style={styles.welcomeText}>
@@ -144,7 +147,11 @@ const HomeScreen = ({ navigation }) => {
           </Text>
         </View>
       )}
+
+      {/* Viser loading-tekst mens chatrum hentes */}
       {loading && <Text style={{ textAlign: 'center', marginTop: 20 }}>Henter chatrum...</Text>}
+
+      {/* Viser fejlmeddelelse og mulighed for at prøve igen */}
       {error !== '' && (
         <View style={{ padding: 10 }}>
           <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
@@ -154,13 +161,15 @@ const HomeScreen = ({ navigation }) => {
         </View>
       )}
 
-
+      {/* Liste over chatrum brugeren er medlem af */}
       <FlatList
         data={chatRooms}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
       />
+
+      {/* Vis besked hvis brugeren ikke er medlem af nogen chatrum */}
       {!loading && chatRooms.length === 0 && error === '' && (
        <Text style={{ textAlign: 'center', fontSize: 16 }}>
        Du er ikke medlem af nogen chatrum endnu.{'\n'}
@@ -168,12 +177,13 @@ const HomeScreen = ({ navigation }) => {
      </Text>
       )}
 
+      {/* Knap til at oprette nyt chatrum */}
       <TouchableOpacity
         onPress={() => navigation.navigate('CreateChatRoom')}
         style={styles.floatingPlus}
       >
         <Image
-          source={require('../assets/plus.png')} // Sørg for dette er det sorte plus-ikon
+          source={require('../assets/plus.png')} 
           style={styles.plusIcon}
         />
       </TouchableOpacity>

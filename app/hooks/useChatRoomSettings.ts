@@ -12,16 +12,66 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
   const [selectAll, setSelectAll] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [admins, setAdmins] = useState([]);
+// Tilføj i din useChatRoomSettings hook:
 
+const handleDeleteRoom = async () => {
+  try {
+    const chatRoomRef = firestore().collection('chatRooms').doc(chatRoomId);
+
+    // Slet chatrummet
+    await chatRoomRef.delete();
+
+    // Fjern chatRoomId fra alle brugeres chatRooms array
+    const usersSnapshot = await firestore().collection('Users').get();
+
+    const batch = firestore().batch();
+
+    usersSnapshot.docs.forEach(doc => {
+      const userRef = firestore().collection('Users').doc(doc.id);
+      const userChatRooms = doc.data().chatRooms || [];
+
+      if (userChatRooms.includes(chatRoomId)) {
+        batch.update(userRef, {
+          chatRooms: userChatRooms.filter(id => id !== chatRoomId),
+        });
+      }
+    });
+
+    await batch.commit();
+
+    Alert.alert('Succes', 'Chatrum er slettet.');
+    navigation.goBack();  // Naviger tilbage (evt. også i kaldet til hook)
+  } catch (error) {
+    console.error('Fejl ved sletning af chatrum:', error);
+    Alert.alert('Fejl', 'Kunne ikke slette chatrummet. Prøv igen.');
+  }
+};
+
+  // Tjek om bruger er admin
   useEffect(() => {
     const fetchRoomData = async () => {
       try {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+          console.warn('Ingen bruger logget ind');
+          setIsAdmin(false);
+          return;
+        }
+
         const roomDoc = await firestore().collection('chatRooms').doc(chatRoomId).get();
         const roomData = roomDoc.data();
-        const currentUserId = auth().currentUser.uid;
+
+        if (!roomData) {
+          console.warn('Chatrum ikke fundet');
+          setIsAdmin(false);
+          return;
+        }
+
+        const currentUserId = currentUser.uid;
         const userIsAdmin =
-          (Array.isArray(roomData?.admins) && roomData.admins.includes(currentUserId)) ||
-          roomData?.creator === currentUserId;
+          (Array.isArray(roomData.admins) && roomData.admins.includes(currentUserId)) ||
+          roomData.creator === currentUserId;
+
         setIsAdmin(userIsAdmin);
       } catch (error) {
         console.error('Fejl ved hentning af admin-status:', error);
@@ -30,28 +80,41 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
     fetchRoomData();
   }, [chatRoomId]);
 
+  // Hent chatrum og brugere
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [usersSnapshot, chatRoomDoc] = await Promise.all([
           firestore().collection('Users').get(),
           firestore().collection('chatRooms').doc(chatRoomId).get(),
         ]);
+
+        const chatRoomData = chatRoomDoc.data();
+
+        if (!chatRoomData) {
+          console.warn('Chatrum ikke fundet');
+          setLoading(false);
+          return;
+        }
+
         const usersList = usersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
-        const chatRoomData = chatRoomDoc.data();
 
-        setChatRoomName(chatRoomData?.name || '');
-        setChatRoomDescription(chatRoomData?.description || '');
+        setChatRoomName(chatRoomData.name || '');
+        setChatRoomDescription(chatRoomData.description || '');
         setUsers(usersList);
 
-        const initialSelected = new Set(chatRoomData?.members || usersList.map(u => u.id));
+        // Brug chatrummets medlemmer hvis sat, ellers alle brugere
+        const initialSelected = new Set(
+          Array.isArray(chatRoomData.members) ? chatRoomData.members : usersList.map(u => u.id)
+        );
         setSelectedUsers(initialSelected);
         setSelectAll(initialSelected.size === usersList.length);
 
-        const adminIds = chatRoomData?.admins || (chatRoomData?.creator ? [chatRoomData.creator] : []);
+        const adminIds = chatRoomData.admins || (chatRoomData.creator ? [chatRoomData.creator] : []);
         const adminUsers = usersList.filter(user => adminIds.includes(user.id));
         setAdmins(adminUsers);
 
@@ -64,6 +127,7 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
     fetchData();
   }, [chatRoomId]);
 
+  // Toggle valg af enkelt bruger
   const toggleUserSelection = (userId) => {
     setSelectedUsers(prevSelected => {
       const newSelected = new Set(prevSelected);
@@ -77,6 +141,7 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
     });
   };
 
+  // Toggle select all / deselect all
   const toggleSelectAll = () => {
     if (selectAll) {
       setSelectedUsers(new Set());
@@ -87,73 +152,66 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
     }
   };
 
+  // Gem ændringer i chatrummet
   const handleSaveChanges = async () => {
     if (!chatRoomName.trim()) {
       Alert.alert('Fejl', 'Chatrummets navn må ikke være tomt.');
       return;
     }
     if (selectedUsers.size === 0) {
-      Alert.alert('Fejl', 'Der skal være mindst ét medlem i chatrummet.');
+      Alert.alert('Fejl', 'Vælg mindst én bruger.');
       return;
     }
+
+    setLoading(true);
     try {
-      await firestore().collection('chatRooms').doc(chatRoomId).update({
+      const chatRoomRef = firestore().collection('chatRooms').doc(chatRoomId);
+
+      // Opdater chatrum data
+      await chatRoomRef.update({
         name: chatRoomName.trim(),
         description: chatRoomDescription.trim(),
         members: Array.from(selectedUsers),
-        lastMessageAt: firestore.FieldValue.serverTimestamp(),
       });
-  
+
+      // Opdater brugernes chatRooms arrays 
       const batch = firestore().batch();
-      const allUserDocs = await firestore().collection('Users').get();
-  
-      allUserDocs.docs.forEach(doc => {
-        const userId = doc.id;
-        const userRef = firestore().collection('Users').doc(userId);
-        if (selectedUsers.has(userId)) {
-          batch.set(userRef, { chatRooms: firestore.FieldValue.arrayUnion(chatRoomId) }, { merge: true });
+
+      // Først hent alle brugere
+      const usersSnapshot = await firestore().collection('Users').get();
+
+      usersSnapshot.docs.forEach(doc => {
+        const userRef = firestore().collection('Users').doc(doc.id);
+        const userChatRooms = doc.data().chatRooms || [];
+
+        if (selectedUsers.has(doc.id)) {
+          // Hvis brugeren skal være med, tilføj chatRoomId hvis ikke allerede tilføjet
+          if (!userChatRooms.includes(chatRoomId)) {
+            batch.update(userRef, {
+              chatRooms: [...userChatRooms, chatRoomId],
+            });
+          }
         } else {
-          batch.set(userRef, { chatRooms: firestore.FieldValue.arrayRemove(chatRoomId) }, { merge: true });
+          // Hvis brugeren ikke skal være med, fjern chatRoomId hvis den findes
+          if (userChatRooms.includes(chatRoomId)) {
+            batch.update(userRef, {
+              chatRooms: userChatRooms.filter(id => id !== chatRoomId),
+            });
+          }
         }
       });
-  
+
       await batch.commit();
-  
+
       Alert.alert('Succes', 'Ændringer gemt.');
       navigation.goBack();
     } catch (error) {
-      console.error('Fejl ved opdatering:', error);
-      Alert.alert('Fejl', error?.message ?? 'Noget gik galt. Prøv igen.');
-      throw error; // Så man kan håndtere det i komponenten hvis nødvendigt
+      console.error('Fejl ved gemning:', error);
+      Alert.alert('Fejl', 'Kunne ikke gemme ændringer. Prøv igen.');
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleDeleteRoom = async () => {
-    try {
-      await firestore().collection('chatRooms').doc(chatRoomId).delete();
-  
-      const allUserDocs = await firestore().collection('Users').get();
-      const batch = firestore().batch();
-  
-      allUserDocs.docs.forEach(doc => {
-        const userRef = firestore().collection('Users').doc(doc.id);
-        batch.set(
-          userRef,
-          { chatRooms: firestore.FieldValue.arrayRemove(chatRoomId) },
-          { merge: true }
-        );
-      });
-  
-      await batch.commit();
-  
-      // Navigér tilbage – du viser allerede Alert i komponenten
-      navigation.goBack();
-    } catch (error) {
-      console.error('Fejl ved sletning:', error);
-      throw error; // Fejl håndteres i komponenten via try/catch
-    }
-  };
-  
 
   return {
     chatRoomName,
@@ -165,10 +223,10 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
     toggleUserSelection,
     selectAll,
     toggleSelectAll,
-    handleSaveChanges,
-    handleDeleteRoom,
+    loading,
     isAdmin,
     admins,
-    loading,
+    handleSaveChanges,
+    handleDeleteRoom, 
   };
 };

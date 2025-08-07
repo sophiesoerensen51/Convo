@@ -3,16 +3,20 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Aler
 import auth from '@react-native-firebase/auth';
 
 const UserSettings = ({ navigation }) => {
+  // Hent den aktuelle bruger fra Firebase Auth
   const user = auth().currentUser;
 
+  // State til brugernavn, ny adgangskode og opdateringsstatus
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [newPassword, setNewPassword] = useState('');
   const [updatingName, setUpdatingName] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // Funktion til at logge brugeren ud og navigere til login-skærmen
   const handleLogout = async () => {
     try {
       await auth().signOut();
+      // Naviger til login og fjern tidligere skærme fra stacken
       navigation.reset({
         index: 0,
         routes: [{ name: 'LoginScreen' }],
@@ -23,12 +27,14 @@ const UserSettings = ({ navigation }) => {
     }
   };
 
+  // Opdater Firebase brugerens displayName
   const updateDisplayName = async () => {
+    // Tjek at navnet ikke er tomt
     if (displayName.trim() === '') {
       Alert.alert('Fejl', 'Navnet kan ikke være tomt.');
       return;
     }
-    setUpdatingName(true);
+    setUpdatingName(true); // Vis loading state på knappen
     try {
       await user.updateProfile({ displayName: displayName.trim() });
       Alert.alert('Succes', 'Brugernavn opdateret!');
@@ -36,30 +42,33 @@ const UserSettings = ({ navigation }) => {
       console.error('Update displayName error:', error);
       Alert.alert('Fejl', 'Kunne ikke opdatere brugernavn. Prøv igen.');
     }
-    setUpdatingName(false);
+    setUpdatingName(false); 
   };
 
+  // Opdater Firebase brugerens adgangskode
   const updatePassword = async () => {
+    // Tjek adgangskodens længde (mindst 6 tegn)
     if (newPassword.length < 6) {
       Alert.alert('Fejl', 'Adgangskode skal være mindst 6 tegn.');
       return;
     }
-    setUpdatingPassword(true);
+    setUpdatingPassword(true); // Vis loading state på knappen
     try {
       await user.updatePassword(newPassword);
       Alert.alert('Succes', 'Adgangskode opdateret!');
-      setNewPassword('');
+      setNewPassword(''); // Nulstil adgangskodefeltet
     } catch (error) {
       console.error('Update password error:', error);
       Alert.alert('Fejl', 'Kunne ikke opdatere adgangskode. Prøv igen.');
     }
-    setUpdatingPassword(false);
+    setUpdatingPassword(false); 
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Brugerindstillinger</Text>
 
+      {/* Sektion til opdatering af displayName */}
       <View style={styles.section}>
         <Text style={styles.label}>Navn:</Text>
         <TextInput
@@ -80,11 +89,13 @@ const UserSettings = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Viser brugerens email (kan ikke redigeres) */}
       <View style={styles.section}>
         <Text style={styles.label}>Email:</Text>
         <Text style={styles.email}>{user?.email}</Text>
       </View>
 
+      {/* Sektion til opdatering af adgangskode */}
       <View style={styles.section}>
         <Text style={styles.label}>Ny adgangskode:</Text>
         <TextInput
@@ -105,6 +116,7 @@ const UserSettings = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Logout knap */}
       <TouchableOpacity
         style={[styles.button, styles.logoutButton]}
         onPress={handleLogout}
@@ -115,11 +127,12 @@ const UserSettings = ({ navigation }) => {
   );
 };
 
+// Styling til komponenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', 
+    alignItems: 'center',    
     padding: 20,
     backgroundColor: '#fff',
   },
@@ -136,7 +149,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     color: '#666',
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-start', 
     marginLeft: '12.5%',
     marginBottom: 8,
   },
@@ -168,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#dc3545', 
     marginTop: 15,
   },
   buttonText: {

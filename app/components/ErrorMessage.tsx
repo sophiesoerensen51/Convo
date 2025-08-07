@@ -1,11 +1,17 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
 
+// Komponent til visning af en fejlbesked
+// Viser kun teksten, hvis der faktisk er en fejlbesked
 const ErrorMessage = ({ message }: { message: string }) => {
-  if (!message) return null; // Returner ingenting hvis ingen fejl
+  
+  // Hvis der ikke er nogen fejlbesked, vises ingenting
+  if (!message) return null;
 
+  // Ellers vises fejlbeskeden med en bestemt tekststil
   return <Text style={styles.errorText}>{message}</Text>;
 };
+
 
 const styles = StyleSheet.create({
   errorText: {

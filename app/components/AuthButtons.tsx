@@ -1,21 +1,28 @@
-// components/AuthButtons.tsx
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 
 type Props = {
+  // Funktion der kaldes når brugeren trykker på "Log In"
   onLoginPress: () => void;
+  // Funktion der kaldes når brugeren trykker på "Create Account"
   onCreateAccountPress: () => void;
 };
 
+/**
+ * AuthButtons-komponent viser to knapper: "Log In" og "Create Account".
+ * Bruges typisk på login- eller registreringsskærmen.
+ */
 const AuthButtons = ({ onLoginPress, onCreateAccountPress }: Props) => {
   return (
     <>
+      {/* Log In-knap */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.button} onPress={onLoginPress}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Create Account-knap med grøn baggrund */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#28A745' }]}

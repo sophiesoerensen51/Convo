@@ -1,17 +1,22 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, Image, View, GestureResponderEvent } from 'react-native';
 
+// Props-type for knappen, der modtager en onPress-funktion
 interface GoogleLoginButtonProps {
   onPress: (event: GestureResponderEvent) => void;
 }
 
+// En knap-komponent til login eller oprettelse via Google
 const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onPress }) => (
   <View style={styles.buttonContainer}>
+    {/* Når brugeren trykker på knappen, kaldes onPress */}
     <TouchableOpacity style={styles.googleButton} onPress={onPress}>
+      {/* Google-logoet vises til venstre for teksten */}
       <Image
         source={require('../assets/google.png')}
         style={styles.googleLogo}
       />
+      {/* Tekst der forklarer, hvad knappen gør */}
       <Text style={styles.googleButtonText}>Sign in / Sign up with Google</Text>
     </TouchableOpacity>
   </View>

@@ -26,6 +26,7 @@ const ChatRoomScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  // Sæt navigation header titel og knap
   useLayoutEffect(() => {
     navigation.setOptions({
       title: chatRoomName,
@@ -34,16 +35,13 @@ const ChatRoomScreen = () => {
           onPress={() => navigation.navigate('ChatRoomSettings', { chatRoomId })}
           style={{ marginRight: 16 }}
         >
-          <Image
-            source={settings}
-            style={{ width: 24, height: 24 }}
-            resizeMode="contain"
-          />
+          <Image source={settings} style={{ width: 24, height: 24 }} resizeMode="contain" />
         </TouchableOpacity>
       ),
     });
   }, [navigation, chatRoomName, chatRoomId]);
 
+  // Parse firestore timestamp til JS Date
   const parseCreatedAt = (data) => {
     if (data.createdAt && typeof data.createdAt.toDate === 'function') {
       return data.createdAt.toDate();
@@ -54,13 +52,14 @@ const ChatRoomScreen = () => {
     }
   };
 
+  // Hent realtime beskeder (seneste 50)
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('chatRooms')
       .doc(chatRoomId)
       .collection('messages')
       .orderBy('createdAt', 'desc')
-      .limit(10)
+      .limit(50)
       .onSnapshot(snapshot => {
         if (!snapshot || snapshot.empty) return;
 
@@ -78,6 +77,7 @@ const ChatRoomScreen = () => {
         fetchedMessages.sort((a, b) => a.createdAt - b.createdAt);
 
         lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
+
         setMessages(fetchedMessages);
 
         setTimeout(() => {
@@ -88,6 +88,7 @@ const ChatRoomScreen = () => {
     return () => unsubscribe();
   }, [chatRoomId]);
 
+  // Load flere beskeder (pagination)
   const loadMoreMessages = async () => {
     if (loadingMore || !hasMore || !lastVisibleRef.current) return;
 
@@ -119,6 +120,7 @@ const ChatRoomScreen = () => {
       }).filter(msg => msg.createdAt.getTime() !== 0);
 
       lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
+
       moreMessages.sort((a, b) => a.createdAt - b.createdAt);
       setMessages(prev => [...moreMessages, ...prev]);
     } catch (error) {
@@ -129,7 +131,8 @@ const ChatRoomScreen = () => {
     }
   };
 
-  async function handleSend() {
+  // Send besked funktion
+  const handleSend = async () => {
     setErrorMessage(null);
 
     const user = auth().currentUser;
@@ -174,8 +177,9 @@ const ChatRoomScreen = () => {
       console.error("Fejl ved afsendelse:", error);
       setErrorMessage("Kunne ikke sende beskeden. Prøv igen.");
     }
-  }
+  };
 
+  // Vælg billede fra kamera eller bibliotek
   const handleImagePick = async (fromCamera = false) => {
     setErrorMessage(null);
 
@@ -220,7 +224,6 @@ const ChatRoomScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={90}
       >
-        {description ? <Text style={styles.description}>{description}</Text> : null}
 
         <FlatList
           ref={flatListRef}
@@ -266,85 +269,53 @@ const ChatRoomScreen = () => {
           />
 
           <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Send</Text>
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Send</Text>
           </TouchableOpacity>
         </View>
+
+        {errorMessage && (
+          <Text style={{ color: 'red', textAlign: 'center', marginBottom: 10 }}>
+            {errorMessage}
+          </Text>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginVertical: 5,
-  },
-  myMessageContainer: {
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-  },
-  theirMessageContainer: {
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  messageBubble: {
-    maxWidth: '70%',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  myMessageBubble: {
-    backgroundColor: '#DCF8C6',
-  },
-  theirMessageBubble: {
-    backgroundColor: '#ECECEC',
-  },
-  senderName: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 3,
-  },
-  timeText: {
-    fontSize: 10,
-    color: '#888',
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
     backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    marginHorizontal: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f0f0f0',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
     borderRadius: 20,
+    paddingHorizontal: 12,
+    marginHorizontal: 8,
   },
   sendButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
   iconButton: {
-    width: 30,
-    height: 30,
-    marginHorizontal: 4,
+    width: 28,
+    height: 28,
+    marginHorizontal: 5,
   },
   description: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: '#666',
-    fontStyle: 'italic',
+    padding: 10,
+    fontSize: 14,
+    color: '#444',
   },
 });
 

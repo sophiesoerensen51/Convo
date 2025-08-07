@@ -5,8 +5,8 @@ import SelectAllItem from '../components/SelectAllItem';
 import { useCreateChatRoom } from '../hooks/useCreateChatRoom';
 import auth from '@react-native-firebase/auth';
 
-
 const CreateChatRoom = ({ navigation }) => {
+  // Hent state og funktioner til at håndtere oprettelse af chatrum fra custom hook useCreateChatRoom
   const {
     roomName,
     setRoomName,
@@ -19,22 +19,27 @@ const CreateChatRoom = ({ navigation }) => {
     handleCreateRoom,
   } = useCreateChatRoom({ navigation });
 
+  // Lokal state til loading status og fejlbeskeder
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+
+  // Funktion der kaldes når brugeren trykker "Opret" knappen
   const onCreatePress = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true);    
+    setError('');        
     try {
-      await handleCreateRoom();
+      await handleCreateRoom();  // Forsøg at oprette chatrummet via hook
     } catch (err) {
       console.error(err);
-      setError('Kunne ikke oprette chatrum. Prøv igen.');
+      setError('Kunne ikke oprette chatrum. Prøv igen.');  
     } finally {
-      setLoading(false);
+      setLoading(false);  
     }
   };
 
+  // Render funktion til hver bruger i listen
   const renderUserItem = ({ item }) => {
+    // Hvis item er objektet 'select_all', render SelectAllItem komponent
     if (item.id === 'select_all') {
       return (
         <SelectAllItem
@@ -44,9 +49,11 @@ const CreateChatRoom = ({ navigation }) => {
       );
     }
 
+    // Tjek om brugeren er valgt
     const isSelected = selectedUsers.has(item.id);
-    const isDisabled = false;
+    const isDisabled = false; 
 
+    // Render brugeritem med valgbarhed
     return (
       <UserItem
         user={item}
@@ -58,12 +65,14 @@ const CreateChatRoom = ({ navigation }) => {
     );
   };
 
+  // Data til FlatList: først 'select_all' optionen, derefter alle brugere
   const listData = [{ id: 'select_all' }, ...users];
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Opret nyt chatrum</Text>
 
+      {/* Inputfelt til chatrummets navn */}
       <TextInput
         placeholder="Navn på chatrum"
         value={roomName}
@@ -71,6 +80,7 @@ const CreateChatRoom = ({ navigation }) => {
         style={styles.input}
       />
 
+      {/* Inputfelt til valgfri beskrivelse */}
       <TextInput
         placeholder="Beskrivelse (valgfrit)"
         value={description}
@@ -81,27 +91,28 @@ const CreateChatRoom = ({ navigation }) => {
 
       <Text style={styles.selectUsersTitle}>Vælg brugere til chatrummet:</Text>
 
+      {/* Liste over brugere, inkl. mulighed for at vælge alle */}
       <FlatList
         data={listData}
         keyExtractor={(item) => item.id}
         renderItem={renderUserItem}
-        extraData={[selectedUsers, selectAll]}
+        extraData={[selectedUsers, selectAll]}  
         style={styles.usersList}
       />
 
+      {/* Knap til at oprette chatrummet */}
+      <TouchableOpacity
+        style={[styles.button, loading && { opacity: 0.6 }]} 
+        onPress={onCreatePress}
+        disabled={loading} // Deaktiver knappen under loading
+      >
+        <Text style={styles.buttonText}>{loading ? 'Opretter...' : 'Opret'}</Text>
+      </TouchableOpacity>
 
-<TouchableOpacity
-  style={[styles.button, loading && { opacity: 0.6 }]}
-  onPress={onCreatePress}
-  disabled={loading}
->
-  <Text style={styles.buttonText}>{loading ? 'Opretter...' : 'Opret'}</Text>
-</TouchableOpacity>
-{error ? (
-  <Text style={styles.errorText}>{error}</Text>
-) : null}
-
-
+      {/* Vis fejlbesked hvis oprettelse fejler */}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
     </View>
   );
 };
@@ -158,5 +169,4 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-  
 });

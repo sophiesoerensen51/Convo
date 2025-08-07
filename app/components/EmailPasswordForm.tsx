@@ -1,6 +1,7 @@
 import React from 'react';
 import { TextInput, StyleSheet, View } from 'react-native';
 
+// Props: modtager email og password samt funktioner til at opdatere dem
 type Props = {
   email: string;
   password: string;
@@ -8,9 +9,11 @@ type Props = {
   onPasswordChange: (text: string) => void;
 };
 
+// Komponent til visning af to inputfelter: ét til email og ét til adgangskode
 const EmailPasswordForm = ({ email, password, onEmailChange, onPasswordChange }: Props) => {
   return (
     <View style={styles.container}>
+      {/* Inputfelt til email – bruger e-mail tastatur og slår auto-capitalization fra */}
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -19,6 +22,8 @@ const EmailPasswordForm = ({ email, password, onEmailChange, onPasswordChange }:
         keyboardType="email-address"
         autoCapitalize="none"
       />
+
+      {/* Inputfelt til password – skjuler input og slår auto-capitalization fra */}
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -30,6 +35,7 @@ const EmailPasswordForm = ({ email, password, onEmailChange, onPasswordChange }:
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

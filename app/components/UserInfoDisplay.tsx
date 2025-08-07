@@ -1,16 +1,16 @@
-// components/UserInfoDisplay.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface Props {
-  displayName?: string;
-  email?: string;
+  displayName?: string; // Valgfrit brugernavn til visning
+  email?: string;       // Valgfri email til visning
 }
 
 const UserInfoDisplay: React.FC<Props> = ({ displayName, email }) => (
+  // Container der viser brugernavn og email med grundlæggende styling
   <View style={styles.container}>
-    <Text style={styles.text}>Hello, {displayName || 'user'}!</Text>
-    <Text style={styles.text}>Email: {email}</Text>
+    <Text style={styles.text}>Hello, {displayName || 'user'}!</Text> 
+    <Text style={styles.text}>Email: {email}</Text>                 
   </View>
 );
 

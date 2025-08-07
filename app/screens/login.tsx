@@ -9,30 +9,31 @@ import AuthButtons from '../components/AuthButtons';
 import GoogleLoginButton from '../components/GoogleLoginButton';
 import UserInfoDisplay from '../components/UserInfoDisplay';
 
-
-// Login-skærm med e-mail og Google login
+// Login-skærm med e-mail/password og Google-login
 const LoginScreen = ({ navigation }) => {
+
+  // State til input, brugerinfo, fejl og loading-status
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userInfo, setUserInfo] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-
-  // Logge ind med e-mail og adgangskode
+  // Log ind med email og password via Firebase Auth
   const onLoginPress = async () => {
     setLoading(true); // Vis loader
     try {
       const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      console.log('User signed in with email:', userCredential.user);
-      setUserInfo(userCredential.user);
+      setUserInfo(userCredential.user); // Gem brugerdata
       setErrorMessage('');
+
+      // Naviger til 'Home' skærmen og ryder stacken
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
     } catch (error) {
-      console.error('Login failed:', error);
+      // Håndter fejl med passende beskeder
       if (error.code === 'auth/user-not-found') {
         setErrorMessage('Ingen bruger fundet med denne e-mail.');
       } else if (error.code === 'auth/wrong-password') {
@@ -45,44 +46,36 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-
-  // Logge ind eller oprette bruger med Google
+  // Log ind eller opret bruger med Google-login via Firebase Auth
   const onGoogleButtonPress = async () => {
     try {
-      await GoogleSignin.signOut(); // Ryd tidligere login-data
+      await GoogleSignin.signOut(); // Ryd tidligere sessioner
+
+      // Tjek Google Play Services for at kunne starte login flow
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      // Start Google-login flow
-      const userInfo = await GoogleSignin.signIn();
-      console.log('userInfo', userInfo);
-
+      const userInfo = await GoogleSignin.signIn(); // Start Google login flow
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
 
-      if (!idToken) {
-        throw new Error('No ID token found');
-      }
+      if (!idToken) throw new Error('No ID token found');
 
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       const userCredential = await auth().signInWithCredential(googleCredential);
       const signedInUser = userCredential.user;
 
-      // Opdatér Firebase-profil hvis nødvendigt
+      // Opdater profil hvis nødvendigt
       if (!signedInUser.displayName || !signedInUser.photoURL) {
         await signedInUser.updateProfile({
           displayName: userInfo.user.name,
           photoURL: userInfo.user.photo,
         });
       }
+      await signedInUser.reload(); // Opdater brugerdata
 
-      await signedInUser.reload(); // Hent nyeste brugerdata
-
-      console.log('Google login success:', signedInUser);
-
-      // Sikre at brugerdokument i Firestore findes
+      // Sikre bruger findes i Firestore
       const userDocRef = firestore().collection('Users').doc(signedInUser.uid);
       const userDoc = await userDocRef.get();
-
       if (!userDoc.exists) {
         await userDocRef.set({
           name: signedInUser.displayName || '',
@@ -90,29 +83,21 @@ const LoginScreen = ({ navigation }) => {
           chatRooms: [],
           createdAt: firestore.FieldValue.serverTimestamp(),
         });
-        console.log('Firestore user document created for:', signedInUser.uid);
       }
 
       setUserInfo(signedInUser);
       setErrorMessage('');
-
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } catch (error) {
-      console.error('Google Sign-In error:', error);
       setErrorMessage('Google Sign-In failed. Try again.');
     }
   };
-
 
   return (
     <SafeAreaView style={styles.container}>
       <Logo />
 
-
-      {/* Vise brugerinfo hvis logget ind */}
+      {/* Vis brugerinfo hvis logget ind */}
       {userInfo && (
         <UserInfoDisplay
           displayName={userInfo.displayName}
@@ -120,28 +105,27 @@ const LoginScreen = ({ navigation }) => {
         />
       )}
 
-
-      {/* Formular til e-mail login */}
+      {/* Formular til login med e-mail */}
       <Text style={styles.title}>Login using Email</Text>
-
       <EmailPasswordForm
         email={email}
         password={password}
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
       />
+
+      {/* Loader vises under login */}
       {loading && <Text style={{ marginBottom: 10 }}>Logger ind...</Text>}
       {loading && <ActivityIndicator size="large" color="#007BFF" />}
 
-      {/* Login knap og oprettelse af konto knap */}
+      {/* Knapper til login og oprettelse af konto */}
       <AuthButtons
         onLoginPress={onLoginPress}
         onCreateAccountPress={() => navigation.navigate('CreateAccount')}
         disabled={loading}
       />
 
-
-      {/* Vise fejlbesked */}
+      {/* Vis fejlbesked hvis login fejler */}
       {errorMessage && !loading ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{errorMessage}</Text>
@@ -151,10 +135,8 @@ const LoginScreen = ({ navigation }) => {
         </View>
       ) : null}
 
-
-
+      {/* Google login knap */}
       <GoogleLoginButton onPress={onGoogleButtonPress} />
-
     </SafeAreaView>
   );
 };
@@ -253,5 +235,4 @@ const styles = StyleSheet.create({
   },
 
 });
-
 export default LoginScreen;

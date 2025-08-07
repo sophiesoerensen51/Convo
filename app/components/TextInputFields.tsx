@@ -19,6 +19,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
   autoCapitalize = 'none',
 }) => {
   return (
+    // Tekstinput med styles og nødvendige props
     <TextInput
       style={styles.input}
       placeholder={placeholder}

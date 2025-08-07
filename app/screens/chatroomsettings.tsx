@@ -7,8 +7,10 @@ import SelectAllItem from '../components/SelectAllItem';
 import { useChatRoomSettings } from '../hooks/useChatRoomSettings';
 
 const ChatRoomSettings = ({ route, navigation }) => {
+    // Hent chatRoomId fra navigation params
     const { chatRoomId } = route.params;
 
+    // Custom hook som håndterer state og logik for chatrumsindstillinger
     const {
         chatRoomName,
         setChatRoomName,
@@ -26,12 +28,16 @@ const ChatRoomSettings = ({ route, navigation }) => {
         loading,
     } = useChatRoomSettings(chatRoomId, navigation);
 
+    // Hent id for den nuværende bruger
     const currentUserId = auth().currentUser?.uid;
+
+    // State til at indikere om sletning er i gang
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Funktion der håndterer gem-knap tryk
     const onSavePress = async () => {
         try {
-            await handleSaveChanges();
+            await handleSaveChanges();  // Gem ændringer via hook useChatRoomSettings
             Alert.alert('Success', 'Ændringer er gemt.');
         } catch (error) {
             Alert.alert('Fejl', 'Kunne ikke gemme ændringer. Prøv igen.');
@@ -39,6 +45,7 @@ const ChatRoomSettings = ({ route, navigation }) => {
         }
     };
 
+    // Funktion der viser bekræftelsesdialog og sletter chatrum hvis bekræftet
     const onDeletePress = () => {
         Alert.alert(
           'Bekræft sletning',
@@ -51,8 +58,8 @@ const ChatRoomSettings = ({ route, navigation }) => {
               onPress: async () => {
                 setIsDeleting(true);
                 try {
-                  await handleDeleteRoom();
-                  navigation.goBack();
+                  await handleDeleteRoom(); // Slet chatrum via hook
+                  navigation.goBack(); // Naviger tilbage efter sletning
                 } catch (error) {
                   Alert.alert('Fejl', 'Kunne ikke slette chatrummet. Prøv igen.');
                   console.error(error);
@@ -64,23 +71,24 @@ const ChatRoomSettings = ({ route, navigation }) => {
           ]
         );
       };
-      
 
+    // Render funktion til hvert bruger-item i listen
     const renderUserItem = ({ item }) => {
-        const isSelected = selectedUsers.has(item.id);
-        const disabled = item.id === currentUserId || !isAdmin;
+        const isSelected = selectedUsers.has(item.id);  // Tjek om bruger er valgt
+        const disabled = item.id === currentUserId || !isAdmin; // Deaktiver for nuværende bruger eller hvis ikke admin
 
         return (
             <UserItem
                 user={item}
                 isSelected={isSelected}
                 disabled={disabled}
-                onPress={() => isAdmin && !disabled && toggleUserSelection(item.id)}
+                onPress={() => isAdmin && !disabled && toggleUserSelection(item.id)} // Kun admin kan ændre valg
                 currentUserId={currentUserId}
             />
         );
     };
 
+    // Render funktion til Select-all item
     const renderSelectAllItem = () => (
         <SelectAllItem allSelected={selectAll} onPress={toggleSelectAll} />
     );
@@ -93,6 +101,7 @@ const ChatRoomSettings = ({ route, navigation }) => {
         <View style={styles.container}>
             <Text style={styles.title}>Indstillinger for chatrum</Text>
 
+            {/* Vis admins liste */}
             {admins.length > 0 && (
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Admin{admins.length > 1 ? 's' : ''}:</Text>
@@ -104,50 +113,56 @@ const ChatRoomSettings = ({ route, navigation }) => {
                 </View>
             )}
 
+            {/* Advarsel hvis brugeren ikke er admin */}
             {!isAdmin && (
                 <Text style={{ color: 'gray', fontStyle: 'italic', marginBottom: 10 }}>
                     Du har ikke tilladelse til at redigere dette chatrum.
                 </Text>
             )}
 
+            {/* Input til chatrums navn */}
             <TextInput
                 style={styles.input}
                 value={chatRoomName}
                 onChangeText={setChatRoomName}
                 placeholder="Navn på chatrum"
-                editable={isAdmin}
+                editable={isAdmin} // Kun admin kan redigere
             />
 
+            {/* Input til chatrums beskrivelse */}
             <TextInput
                 style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
                 value={chatRoomDescription}
                 onChangeText={setChatRoomDescription}
                 placeholder="Beskrivelse af chatrum"
                 multiline
-                editable={isAdmin}
+                editable={isAdmin} // Kun admin kan redigere
             />
 
             <Text style={styles.selectUsersTitle}>Vælg medlemmer:</Text>
 
+            {/* Liste over brugere med mulighed for at vælge */}
             <FlatList
-                data={[{ id: 'select_all' }, ...users]}
+                data={[{ id: 'select_all' }, ...users]} // Tilføj 'select_all' item for at vælge alle
                 keyExtractor={item => item.id}
                 renderItem={({ item }) => (item.id === 'select_all' ? renderSelectAllItem() : renderUserItem({ item }))}
-                extraData={selectedUsers}
+                extraData={selectedUsers} // Opdater listen hvis valgte brugere ændres
                 style={styles.usersList}
             />
 
+            {/* Gem ændringer knap */}
             <TouchableOpacity
-                style={[styles.button, !isAdmin && { backgroundColor: '#ccc' }]}
+                style={[styles.button, !isAdmin && { backgroundColor: '#ccc' }]} // Grå hvis ikke admin
                 onPress={onSavePress}
-                disabled={!isAdmin}
+                disabled={!isAdmin} // Deaktiver knap hvis ikke admin
             >
                 <Text style={styles.buttonText}>Gem ændringer</Text>
             </TouchableOpacity>
 
+            {/* Slet chatrum knap */}
             <TouchableOpacity
                 onPress={onDeletePress}
-                disabled={!isAdmin}
+                disabled={!isAdmin} // Kun admin kan slette
                 style={{ opacity: isAdmin ? 1 : 0.4, marginTop: 16 }}
             >
                 <Text style={[styles.buttonText, { color: '#FF3B30' }]}>Slet chatrum</Text>
@@ -188,32 +203,6 @@ const styles = StyleSheet.create({
     usersList: {
         maxHeight: 300,
         marginBottom: 16,
-    },
-    userItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    userName: {
-        fontSize: 16,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderWidth: 2,
-        borderColor: '#007AFF',
-        borderRadius: 4,
-        marginRight: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    checkboxSelected: {
-        backgroundColor: '#007AFF',
-    },
-    checkmark: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 18,
     },
     button: {
         backgroundColor: '#007AFF',

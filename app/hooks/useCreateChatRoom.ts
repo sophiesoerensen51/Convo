@@ -4,7 +4,7 @@ import auth from '@react-native-firebase/auth';
 import { Alert } from 'react-native';
 
 type UseCreateChatRoomProps = {
-  navigation: any; // evt. mere præcis type hvis du vil
+  navigation: any; 
 };
 
 export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
@@ -14,6 +14,7 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
 
+// Hent alle brugere fra Firestore, når hook’en startes første gang
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -24,7 +25,7 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
         }));
         setUsers(usersList);
 
-        // Marker alle som valgt som default
+        // Sæt alle brugere som valgte som default
         const allUserIds = usersList.map(u => u.id);
         setSelectedUsers(new Set(allUserIds));
         setSelectAll(true);
@@ -36,8 +37,10 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
     fetchUsers();
   }, []);
 
+  // Funktion til at toggle valg af enkelt bruger eller alle brugere
   const toggleUserSelection = (userId: string) => {
     if (userId === 'select_all') {
+      // Hvis selectAll er true, fravælg alle, ellers vælg alle
       if (selectAll) {
         setSelectedUsers(new Set());
         setSelectAll(false);
@@ -47,6 +50,7 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
         setSelectAll(true);
       }
     } else {
+      // Toggle en enkelt bruger
       setSelectedUsers(prevSelected => {
         const newSelected = new Set(prevSelected);
         if (newSelected.has(userId)) {
@@ -54,12 +58,14 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
         } else {
           newSelected.add(userId);
         }
+        // Opdater selectAll, hvis alle brugere er valgt
         setSelectAll(newSelected.size === users.length);
         return newSelected;
       });
     }
   };
 
+  // Funktion til at oprette et nyt chatrum i Firestore
   const handleCreateRoom = async () => {
     const user = auth().currentUser;
     if (!user) {
@@ -77,21 +83,25 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
 
     try {
       const members = Array.from(selectedUsers);
+
+      // Sørg for, at den oprettende bruger altid er medlem
       if (!members.includes(user.uid)) {
         members.push(user.uid);
       }
 
+      // Opret chatrum i Firestore
       const newRoomRef = await firestore().collection('chatRooms').add({
         name: roomName.trim(),
         description: description.trim(),
         createdBy: user.uid,
         createdAt: firestore.FieldValue.serverTimestamp(),
         members,
-        admins: [user.uid],
+        admins: [user.uid], // Opretter er admin
         lastMessageAt: firestore.FieldValue.serverTimestamp(),
         lastMessageTimestamp: firestore.FieldValue.serverTimestamp(),
       });
 
+      // Opdater alle medlemmer med det nye chatrum
       const batch = firestore().batch();
       members.forEach(uid => {
         const userRef = firestore().collection('Users').doc(uid);
@@ -103,6 +113,7 @@ export const useCreateChatRoom = ({ navigation }: UseCreateChatRoomProps) => {
       });
       await batch.commit();
 
+      // Naviger tilbage efter succesfuld oprettelse
       navigation.goBack();
     } catch (error) {
       console.error('Fejl ved oprettelse af chatrum:', error);
