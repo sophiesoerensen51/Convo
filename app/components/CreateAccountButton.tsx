@@ -1,14 +1,23 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface CreateAccountButtonProps {
   onPress: () => void;
+  loading?: boolean; // valgfri prop til loading state
 }
 
-const CreateAccountButton: React.FC<CreateAccountButtonProps> = ({ onPress }) => {
+const CreateAccountButton: React.FC<CreateAccountButtonProps> = ({ onPress, loading = false }) => {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
-      <Text style={styles.buttonText}>Create Account</Text>
+    <TouchableOpacity
+      style={[styles.button, loading && styles.buttonDisabled]}
+      onPress={onPress}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text style={styles.buttonText}>Create Account</Text>
+      )}
     </TouchableOpacity>
   );
 };
@@ -22,6 +31,9 @@ const styles = StyleSheet.create({
     width: '75%',
     alignItems: 'center',
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#6c757d',
   },
   buttonText: {
     color: '#fff',

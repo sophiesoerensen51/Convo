@@ -27,6 +27,44 @@ const ChatRoomSettings = ({ route, navigation }) => {
     } = useChatRoomSettings(chatRoomId, navigation);
 
     const currentUserId = auth().currentUser?.uid;
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const onSavePress = async () => {
+        try {
+            await handleSaveChanges();
+            Alert.alert('Success', 'Ændringer er gemt.');
+        } catch (error) {
+            Alert.alert('Fejl', 'Kunne ikke gemme ændringer. Prøv igen.');
+            console.error(error);
+        }
+    };
+
+    const onDeletePress = () => {
+        Alert.alert(
+          'Bekræft sletning',
+          'Er du sikker på, at du vil slette chatrummet?',
+          [
+            { text: 'Annuller', style: 'cancel' },
+            {
+              text: 'Slet',
+              style: 'destructive',
+              onPress: async () => {
+                setIsDeleting(true);
+                try {
+                  await handleDeleteRoom();
+                  navigation.goBack();
+                } catch (error) {
+                  Alert.alert('Fejl', 'Kunne ikke slette chatrummet. Prøv igen.');
+                  console.error(error);
+                } finally {
+                  setIsDeleting(false);
+                }
+              }
+            }
+          ]
+        );
+      };
+      
 
     const renderUserItem = ({ item }) => {
         const isSelected = selectedUsers.has(item.id);
@@ -101,20 +139,21 @@ const ChatRoomSettings = ({ route, navigation }) => {
 
             <TouchableOpacity
                 style={[styles.button, !isAdmin && { backgroundColor: '#ccc' }]}
-                onPress={handleSaveChanges}
+                onPress={onSavePress}
                 disabled={!isAdmin}
             >
                 <Text style={styles.buttonText}>Gem ændringer</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-                onPress={handleDeleteRoom}
+                onPress={onDeletePress}
                 disabled={!isAdmin}
                 style={{ opacity: isAdmin ? 1 : 0.4, marginTop: 16 }}
             >
                 <Text style={[styles.buttonText, { color: '#FF3B30' }]}>Slet chatrum</Text>
             </TouchableOpacity>
-        </View>
+
+        </View >
     );
 };
 

@@ -11,13 +11,11 @@ import ImageResizer from 'react-native-image-resizer';
 import RNFS from 'react-native-fs';
 import MessageItem from '../components/MessageItem';
 
-
 const ChatRoomScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { chatRoomId, chatRoomName } = route.params;
 
-  // Håndtere tilstand for chatrum, beskeder, input og billedevalg
   const [description, setDescription] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -26,8 +24,8 @@ const ChatRoomScreen = () => {
   const lastVisibleRef = useRef(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  // Sætte navigationstitel til chatrummets navn
   useLayoutEffect(() => {
     navigation.setOptions({
       title: chatRoomName,
@@ -45,9 +43,7 @@ const ChatRoomScreen = () => {
       ),
     });
   }, [navigation, chatRoomName, chatRoomId]);
-  
 
-  // Konvertere Firestore-tidsstempel til JavaScript Date-objekt
   const parseCreatedAt = (data) => {
     if (data.createdAt && typeof data.createdAt.toDate === 'function') {
       return data.createdAt.toDate();
@@ -58,8 +54,6 @@ const ChatRoomScreen = () => {
     }
   };
 
-  // Lytte til ændringer i beskeder i realtid og opdatere UI
-  // Sortere beskeder i kronologisk rækkefølge og rulle til bunden
   useEffect(() => {
     const unsubscribe = firestore()
       .collection('chatRooms')
@@ -86,12 +80,10 @@ const ChatRoomScreen = () => {
         lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
         setMessages(fetchedMessages);
 
-
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: false });
         }, 100);
       });
-
 
     return () => unsubscribe();
   }, [chatRoomId]);
@@ -101,60 +93,57 @@ const ChatRoomScreen = () => {
 
     setLoadingMore(true);
 
-    // Henter næste batch af beskeder fra Firestore
-    const snapshot = await firestore()
-      .collection('chatRooms')
-      .doc(chatRoomId)
-      .collection('messages')
-      .orderBy('createdAt', 'desc')
-      .startAfter(lastVisibleRef.current)
-      .limit(50)
-      .get();
+    try {
+      const snapshot = await firestore()
+        .collection('chatRooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .orderBy('createdAt', 'desc')
+        .startAfter(lastVisibleRef.current)
+        .limit(50)
+        .get();
 
-    // Hvis der ikke er flere beskeder, opdaterer hasMore og afslutter funktionen
-    if (snapshot.empty) {
-      setHasMore(false);
+      if (snapshot.empty) {
+        setHasMore(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      const moreMessages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: parseCreatedAt(data),
+        };
+      }).filter(msg => msg.createdAt.getTime() !== 0);
+
+      lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
+      moreMessages.sort((a, b) => a.createdAt - b.createdAt);
+      setMessages(prev => [...moreMessages, ...prev]);
+    } catch (error) {
+      console.error("Fejl ved indlæsning af flere beskeder:", error);
+      alert('Kunne ikke indlæse flere beskeder. Prøv igen senere.');
+    } finally {
       setLoadingMore(false);
-      return;
     }
-
-
-    const moreMessages = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: parseCreatedAt(data),
-      };
-    }).filter(msg => msg.createdAt.getTime() !== 0);
-
-    // Opdaterer lastVisibleRef og sorterer de nye beskeder
-    // Tilføjer de nye beskeder til eksisterende beskeder i omvendt rækkefølge
-    lastVisibleRef.current = snapshot.docs[snapshot.docs.length - 1];
-    moreMessages.sort((a, b) => a.createdAt - b.createdAt);
-    setMessages(prev => [...moreMessages, ...prev]);
-    setLoadingMore(false);
   };
 
-
   async function handleSend() {
+    setErrorMessage(null);
+
     const user = auth().currentUser;
 
-    // Tjekker om brugeren er logget ind
     if (!newMessage && !imageUri) return;
 
-    // Hvis billedet er valgt, konverterer det til base64
     if (imageUri) {
       const base64Data = imageUri.split(',')[1];
-
-      // Tjekker om billedet er for stort
       if (base64Data.length > 1000000) {
         console.warn("Billedet er stadig for stort!");
         return;
       }
     }
-    // Opretter beskedobjektet med afsender-id, navn, oprettelsestidspunkt og tekst eller billede
-    // Sender beskeden til Firestore og opdaterer chatrummet med den seneste
+
     const messageToSend = {
       senderId: user.uid,
       senderName: user.displayName || user.email,
@@ -169,12 +158,10 @@ const ChatRoomScreen = () => {
       id: `local-${Date.now()}`
     };
 
-    // Tilføjer den lokale besked til beskedlisten for at opdatere UI straks
     setMessages(prev => [...prev, localMessageObj]);
     setNewMessage('');
     setImageUri(null);
 
-    // Opdatere chatrummets seneste aktivitetstidspunkt
     try {
       const chatRoomRef = firestore().collection('chatRooms').doc(chatRoomId);
 
@@ -183,33 +170,32 @@ const ChatRoomScreen = () => {
       await chatRoomRef.update({
         lastMessageTimestamp: firestore.FieldValue.serverTimestamp(),
       });
-
     } catch (error) {
       console.error("Fejl ved afsendelse:", error);
+      setErrorMessage("Kunne ikke sende beskeden. Prøv igen.");
     }
   }
-  // Håndtere billedvalg fra kamera eller galleri
+
   const handleImagePick = async (fromCamera = false) => {
+    setErrorMessage(null);
+
     const result = await (fromCamera ? launchCamera : launchImageLibrary)({
       mediaType: 'photo',
       quality: 0.5,
       includeBase64: false,
     });
 
-    // Tjekker om billedvalget blev annulleret eller der opstod en fejl
     if (result.didCancel || result.errorCode) {
       console.log('Billedvalg annulleret eller fejl:', result.errorMessage);
       return;
     }
 
-    // Hvis der ikke er valgt et billede, afsluttes funktionen
     const asset = result.assets?.[0];
     if (!asset?.uri) {
       console.warn("Intet billede fundet.");
       return;
     }
 
-    // Hvis billedet er for stort, vises en advarsel
     try {
       const resizedImage = await ImageResizer.createResizedImage(
         asset.uri,
@@ -219,75 +205,14 @@ const ChatRoomScreen = () => {
         60,
       );
 
-      // Læser det valgte billede som base64
       const base64Data = await RNFS.readFile(resizedImage.uri, 'base64');
       setImageUri(`data:image/jpeg;base64,${base64Data}`);
     } catch (error) {
       console.error('Fejl ved billedbehandling:', error);
+      setErrorMessage("Fejl ved billedbehandling. Prøv igen.");
     }
   };
 
-  // Renderer hver besked i FlatList
-  // Tjekker om beskeden er sendt af den nuværende bruger for at bestemme stilen
-  const renderItem = ({ item }) => {
-    const isMyMessage = item.senderId === auth().currentUser?.uid;
-
-    // Viser avatar eller initialer for afsenderen, hvis tilgængelig
-    const avatar = item.senderAvatar
-      ? item.senderAvatar
-      : auth().currentUser?.photoURL
-        ? auth().currentUser.photoURL
-        : null;
-
-    return (
-      <View style={[
-        styles.messageContainer,
-        isMyMessage ? styles.myMessageContainer : styles.theirMessageContainer
-      ]}>
-        {!isMyMessage && (
-          avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitial}>
-                {item.senderName?.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )
-        )}
-
-        <View style={[styles.messageBubble, isMyMessage ? styles.myMessage : styles.theirMessage]}>
-          <Text style={styles.senderName}>{item.senderName}</Text>
-
-          {item.text && (
-            <Text style={{ color: isMyMessage ? 'white' : 'black', marginBottom: item.imageBase64 ? 5 : 0 }}>
-              {item.text}
-            </Text>
-          )}
-
-          {item.imageBase64 && (
-            <Image
-              source={{ uri: item.imageBase64 }}
-              style={{ width: 200, height: 200, borderRadius: 10 }}
-              resizeMode="cover"
-            />
-          )}
-
-          <Text style={[styles.timestamp, { color: isMyMessage ? '#eee' : '#888' }]}>
-            {item.createdAt?.toLocaleString('da-DK', {
-              day: 'numeric',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
-  // Returnerer UI for chatrummet
-  // Inkluderer en beskrivelse, FlatList for beskeder, inputfelt og knapper
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <KeyboardAvoidingView
@@ -311,7 +236,6 @@ const ChatRoomScreen = () => {
           }}
           scrollEventThrottle={100}
         />
-
 
         {imageUri && (
           <View style={{ alignItems: 'center', marginVertical: 10 }}>
@@ -350,7 +274,6 @@ const ChatRoomScreen = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
   messageContainer: {
     flexDirection: 'row',
@@ -365,81 +288,63 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
+  messageBubble: {
+    maxWidth: '70%',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#ddd',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  myMessageBubble: {
+    backgroundColor: '#DCF8C6',
   },
-  avatarInitial: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
+  theirMessageBubble: {
+    backgroundColor: '#ECECEC',
+  },
+  senderName: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 3,
+  },
+  timeText: {
+    fontSize: 10,
+    color: '#888',
+    marginTop: 4,
+    alignSelf: 'flex-end',
   },
   inputContainer: {
     flexDirection: 'row',
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
-    paddingTop: 10,
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    backgroundColor: '#f4f4f4',
-    padding: 10,
-    borderRadius: 8,
+    marginHorizontal: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
   },
   sendButton: {
-    backgroundColor: '#007AFF',
-    marginLeft: 10,
+    backgroundColor: '#3b82f6',
+    borderRadius: 20,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    justifyContent: 'center',
-    borderRadius: 8,
   },
   sendButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  messageBubble: {
-    backgroundColor: '#e1e1e1',
-    padding: 10,
-    borderRadius: 8,
-    marginVertical: 4,
-    alignSelf: 'flex-start',
-    maxWidth: '80%',
-  },
-  myMessage: {
-    backgroundColor: '#007AFF',
-    alignSelf: 'flex-end',
     color: '#fff',
-  },
-  theirMessage: {
-    backgroundColor: '#e1e1e1',
-    color: 'black',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  timestamp: {
-    fontSize: 10,
-    marginTop: 4,
+    fontWeight: 'bold',
   },
   iconButton: {
     width: 30,
     height: 30,
-    marginRight: 8,
-    alignSelf: 'center',
+    marginHorizontal: 4,
+  },
+  description: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
 

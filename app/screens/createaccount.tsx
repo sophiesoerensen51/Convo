@@ -17,11 +17,19 @@ const CreateAccountScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
 
+ 
 
   // Opretter brugerkonto med email og password
   // Opdaterer profil med navn og gemmer brugerdata i Firestore
   const onCreateAccountPress = async () => {
+    if (!email || !password || !name) {
+      setErrorMessage('Udfyld venligst alle felter.');
+      return;
+    }  
+    setLoading(true);
+    setErrorMessage('');
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       console.log('User account created & signed in!');
@@ -65,7 +73,11 @@ const CreateAccountScreen = ({ navigation }) => {
         setErrorMessage('Account creation failed. Please try again.');
       }
       console.error(error);
+    
+    } finally {
+      setLoading(false);
     }
+
   };
 
   return (
@@ -79,7 +91,7 @@ const CreateAccountScreen = ({ navigation }) => {
         name={name}
         setName={setName}
       />
-      <CreateAccountButton onPress={onCreateAccountPress} />
+      <CreateAccountButton onPress={onCreateAccountPress} loading={loading} />
       <ErrorMessage message={errorMessage} />
       <BackToLoginButton onPress={() => navigation.goBack()} />
     </SafeAreaView>

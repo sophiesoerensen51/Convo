@@ -5,6 +5,7 @@ import SelectAllItem from '../components/SelectAllItem';
 import { useCreateChatRoom } from '../hooks/useCreateChatRoom';
 import auth from '@react-native-firebase/auth';
 
+
 const CreateChatRoom = ({ navigation }) => {
   const {
     roomName,
@@ -17,6 +18,21 @@ const CreateChatRoom = ({ navigation }) => {
     toggleUserSelection,
     handleCreateRoom,
   } = useCreateChatRoom({ navigation });
+
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const onCreatePress = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await handleCreateRoom();
+    } catch (err) {
+      console.error(err);
+      setError('Kunne ikke oprette chatrum. Prøv igen.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderUserItem = ({ item }) => {
     if (item.id === 'select_all') {
@@ -73,9 +89,19 @@ const CreateChatRoom = ({ navigation }) => {
         style={styles.usersList}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleCreateRoom}>
-        <Text style={styles.buttonText}>Opret</Text>
-      </TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.button, loading && { opacity: 0.6 }]}
+  onPress={onCreatePress}
+  disabled={loading}
+>
+  <Text style={styles.buttonText}>{loading ? 'Opretter...' : 'Opret'}</Text>
+</TouchableOpacity>
+{error ? (
+  <Text style={styles.errorText}>{error}</Text>
+) : null}
+
+
     </View>
   );
 };
@@ -127,4 +153,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  errorText: {
+    color: 'red',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  
 });

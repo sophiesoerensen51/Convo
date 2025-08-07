@@ -103,10 +103,10 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
         members: Array.from(selectedUsers),
         lastMessageAt: firestore.FieldValue.serverTimestamp(),
       });
-
+  
       const batch = firestore().batch();
       const allUserDocs = await firestore().collection('Users').get();
-
+  
       allUserDocs.docs.forEach(doc => {
         const userId = doc.id;
         const userRef = firestore().collection('Users').doc(userId);
@@ -116,51 +116,44 @@ export const useChatRoomSettings = (chatRoomId, navigation) => {
           batch.set(userRef, { chatRooms: firestore.FieldValue.arrayRemove(chatRoomId) }, { merge: true });
         }
       });
-
+  
       await batch.commit();
-
+  
       Alert.alert('Succes', 'Ændringer gemt.');
       navigation.goBack();
     } catch (error) {
       console.error('Fejl ved opdatering:', error);
-      Alert.alert('Fejl', 'Noget gik galt. Prøv igen.');
+      Alert.alert('Fejl', error?.message ?? 'Noget gik galt. Prøv igen.');
+      throw error; // Så man kan håndtere det i komponenten hvis nødvendigt
     }
   };
-
-  const handleDeleteRoom = () => {
-    Alert.alert(
-      'Bekræft sletning',
-      'Er du sikker på, at du vil slette dette chatrum? Det kan ikke fortrydes.',
-      [
-        { text: 'Annuller', style: 'cancel' },
-        {
-          text: 'Slet',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await firestore().collection('chatRooms').doc(chatRoomId).delete();
-
-              const allUserDocs = await firestore().collection('Users').get();
-              const batch = firestore().batch();
-
-              allUserDocs.docs.forEach(doc => {
-                const userRef = firestore().collection('Users').doc(doc.id);
-                batch.set(userRef, { chatRooms: firestore.FieldValue.arrayRemove(chatRoomId) }, { merge: true });
-              });
-
-              await batch.commit();
-
-              Alert.alert('Succes', 'Chatrummet er slettet.');
-              navigation.goBack();
-            } catch (error) {
-              console.error('Fejl ved sletning:', error);
-              Alert.alert('Fejl', 'Noget gik galt. Prøv igen.');
-            }
-          },
-        },
-      ]
-    );
+  
+  const handleDeleteRoom = async () => {
+    try {
+      await firestore().collection('chatRooms').doc(chatRoomId).delete();
+  
+      const allUserDocs = await firestore().collection('Users').get();
+      const batch = firestore().batch();
+  
+      allUserDocs.docs.forEach(doc => {
+        const userRef = firestore().collection('Users').doc(doc.id);
+        batch.set(
+          userRef,
+          { chatRooms: firestore.FieldValue.arrayRemove(chatRoomId) },
+          { merge: true }
+        );
+      });
+  
+      await batch.commit();
+  
+      // Navigér tilbage – du viser allerede Alert i komponenten
+      navigation.goBack();
+    } catch (error) {
+      console.error('Fejl ved sletning:', error);
+      throw error; // Fejl håndteres i komponenten via try/catch
+    }
   };
+  
 
   return {
     chatRoomName,

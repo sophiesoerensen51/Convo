@@ -7,14 +7,17 @@ import ChatRoomItem from '../components/ChatRoomItem';
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [chatRooms, setChatRooms] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) return;
-  
+
     setUser(currentUser);
-  
-    // Migration: tilføj lastMessageTimestamp hvis kun lastMessageAt findes
+
+    // Migration (evt. pak det ud i en separat funktion)
     firestore()
       .collection('chatRooms')
       .get()
@@ -25,51 +28,68 @@ const HomeScreen = ({ navigation }) => {
             doc.ref.update({ lastMessageTimestamp: data.lastMessageAt });
           }
         });
+      })
+      .catch(err => {
+        console.error('Migration error:', err);
+        setError('Kunne ikke migrere chatrum.');
       });
-  
+
     const userDocRef = firestore().collection('Users').doc(currentUser.uid);
-  
+
     const unsubscribeUser = userDocRef.onSnapshot(userDoc => {
-      if (!userDoc.exists) return;
-  
-      const userChatRoomIds = userDoc.data().chatRooms || [];
-  
-      if (userChatRoomIds.length === 0) {
+      if (!userDoc.exists) {
         setChatRooms([]);
+        setLoading(false);
         return;
       }
-  
+
+      const userChatRoomIds = userDoc.data().chatRooms || [];
+
+      if (userChatRoomIds.length === 0) {
+        setChatRooms([]);
+        setLoading(false);
+        return;
+      }
+
       const chatRoomsQuery = firestore()
         .collection('chatRooms')
         .where(firestore.FieldPath.documentId(), 'in', userChatRoomIds);
-  
-      const unsubscribeRooms = chatRoomsQuery.onSnapshot(snapshot => {
-        const rooms = [];
-        snapshot.forEach(doc => {
-          if (doc.exists) {
-            rooms.push({ id: doc.id, ...doc.data() });
-          }
-        });
-  
-        rooms.sort((a, b) => {
-          const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-          const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-          return bTime - aTime;
-        });
-  
-        setChatRooms(rooms);
-      });
-  
-      return () => {
-        unsubscribeRooms();
-      };
+
+      const unsubscribeRooms = chatRoomsQuery.onSnapshot(
+        snapshot => {
+          const rooms = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          rooms.sort((a, b) => {
+            const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+            const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+            return bTime - aTime;
+          });
+
+          setChatRooms(rooms);
+          setLoading(false);
+          setError('');
+        },
+        err => {
+          console.error('ChatRooms listener error:', err);
+          setError('Kunne ikke hente chatrum.');
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribeRooms();
+    }, err => {
+      console.error('User listener error:', err);
+      setError('Kunne ikke hente brugerdata.');
+      setLoading(false);
     });
-  
-    return () => {
-      unsubscribeUser();
-    };
+
+    return () => unsubscribeUser();
   }, []);
-  
+
+
 
   const handleChatPress = (chatRoom) => {
     navigation.navigate('ChatRoomScreen', {
@@ -93,7 +113,7 @@ const HomeScreen = ({ navigation }) => {
   const renderItem = ({ item }) => (
     <ChatRoomItem chatRoom={item} onPress={() => handleChatPress(item)} />
   );
-  
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,6 +124,16 @@ const HomeScreen = ({ navigation }) => {
           </Text>
         </View>
       )}
+      {loading && <Text style={{ textAlign: 'center', marginTop: 20 }}>Henter chatrum...</Text>}
+      {error !== '' && (
+        <View style={{ padding: 10 }}>
+          <Text style={{ color: 'red', textAlign: 'center' }}>{error}</Text>
+          <TouchableOpacity onPress={() => navigation.replace('HomeScreen')} style={styles.button}>
+            <Text style={styles.buttonText}>Prøv igen</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
 
       <FlatList
         data={chatRooms}
@@ -111,20 +141,27 @@ const HomeScreen = ({ navigation }) => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
       />
+      {!loading && chatRooms.length === 0 && error === '' && (
+       <Text style={{ textAlign: 'center', fontSize: 16 }}>
+       Du er ikke medlem af nogen chatrum endnu.{'\n'}
+       Tryk på plusset for at oprette et nyt chatrum.
+     </Text>
+      )}
+
 
       <TouchableOpacity style={styles.button} onPress={onLogoutPress}>
         <Text style={styles.buttonText}>Log Out</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-  onPress={() => navigation.navigate('CreateChatRoom')}
-  style={styles.floatingPlus}
->
-  <Image
-    source={require('../assets/plus.png')} // Sørg for dette er det sorte plus-ikon
-    style={styles.plusIcon}
-  />
-</TouchableOpacity>
+        onPress={() => navigation.navigate('CreateChatRoom')}
+        style={styles.floatingPlus}
+      >
+        <Image
+          source={require('../assets/plus.png')} // Sørg for dette er det sorte plus-ikon
+          style={styles.plusIcon}
+        />
+      </TouchableOpacity>
 
     </SafeAreaView>
   );
@@ -214,9 +251,9 @@ const styles = StyleSheet.create({
   },
   floatingPlus: {
     position: 'absolute',
-    top: 20,         
+    top: 20,
     right: 20,
-    width: 40,     
+    width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
@@ -227,8 +264,8 @@ const styles = StyleSheet.create({
   plusIcon: {
     width: 24,
     height: 24,
-    tintColor: 'black',  
-  },  
+    tintColor: 'black',
+  },
 });
 
 export default HomeScreen;

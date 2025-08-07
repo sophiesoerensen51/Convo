@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ActivityIndicator } from 'react-native';
 import { Text, View, TextInput, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
@@ -15,9 +16,12 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [userInfo, setUserInfo] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
 
   // Logge ind med e-mail og adgangskode
   const onLoginPress = async () => {
+    setLoading(true); // Vis loader
     try {
       const userCredential = await auth().signInWithEmailAndPassword(email, password);
       console.log('User signed in with email:', userCredential.user);
@@ -30,14 +34,17 @@ const LoginScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Login failed:', error);
       if (error.code === 'auth/user-not-found') {
-        setErrorMessage('No user found with this email.');
+        setErrorMessage('Ingen bruger fundet med denne e-mail.');
       } else if (error.code === 'auth/wrong-password') {
-        setErrorMessage('Incorrect password.');
+        setErrorMessage('Forkert adgangskode.');
       } else {
-        setErrorMessage('Login failed. Please try again.');
+        setErrorMessage('Login fejlede. Prøv igen.');
       }
+    } finally {
+      setLoading(false); // Stop loader
     }
   };
+
 
   // Logge ind eller oprette bruger med Google
   const onGoogleButtonPress = async () => {
@@ -123,14 +130,28 @@ const LoginScreen = ({ navigation }) => {
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
       />
+      {loading && <Text style={{ marginBottom: 10 }}>Logger ind...</Text>}
+      {loading && <ActivityIndicator size="large" color="#007BFF" />}
+
       {/* Login knap og oprettelse af konto knap */}
       <AuthButtons
         onLoginPress={onLoginPress}
         onCreateAccountPress={() => navigation.navigate('CreateAccount')}
+        disabled={loading}
       />
 
+
       {/* Vise fejlbesked */}
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {errorMessage && !loading ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <TouchableOpacity onPress={onLoginPress} style={styles.retryButton}>
+            <Text style={styles.buttonText}>Prøv igen</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+
 
       <GoogleLoginButton onPress={onGoogleButtonPress} />
 
@@ -219,6 +240,18 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
   },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  retryButton: {
+    backgroundColor: '#007BFF',
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+
 });
 
 export default LoginScreen;
