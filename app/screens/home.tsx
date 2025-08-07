@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Image } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import ChatRoomItem from '../components/ChatRoomItem';
 
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -110,28 +111,9 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.chatRoom} onPress={() => handleChatPress(item)}>
-      <View style={styles.chatRoomContent}>
-        <View>
-          <Text style={styles.chatRoomText}>{item.name}</Text>
-          {item.lastMessage && (
-            <Text style={styles.chatRoomDescription} numberOfLines={1}>
-              {item.lastMessage}
-            </Text>
-          )}
-          {!item.lastMessage && item.description && (
-            <Text style={styles.chatRoomDescription} numberOfLines={1}>
-              {item.description}
-            </Text>
-          )}
-        </View>
-        <Image
-          source={require('../assets/chevron.png')}
-          style={styles.chevronIcon}
-        />
-      </View>
-    </TouchableOpacity>
+    <ChatRoomItem chatRoom={item} onPress={() => handleChatPress(item)} />
   );
+  
 
   return (
     <SafeAreaView style={styles.container}>
