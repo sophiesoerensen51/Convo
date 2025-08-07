@@ -6,11 +6,16 @@ Convo er en moderne chatapplikation udviklet i **React Native**, hvor brugere ka
 
 ## 🚀 Funktioner
 
-- ✅ Opret bruger med email og adgangskode
-- 🔐 Login med email/password eller Google
-- 💬 Deltag i chatrum (chatrooms) via Firestore
-- 🖼 Send beskeder og billeder i realtid
-- 🚪 Log ud når som helst
+- Opret bruger med email og adgangskode.
+- Login med email/password eller Google.
+- Deltag i chatrum (chatrooms) via Firestore.
+- Deltag i chatrum du er blevet tilføjet til.
+- Opret dine egne chatrum og tilføj andre brugere.
+- Slet dine egne oprettede chatrum og fjern eller tilføj brugere.
+- Send beskeder og billeder i realtid.
+- Log ud i indstillinger.
+- Opdater din adgangskode eller brugernavn.
+- Opdater navn og beskrivelse på oprettet chatrum.
 
 ---
 
@@ -67,37 +72,38 @@ yarn ios
 
 ## 📱 Brug
 
-Når appen er installeret og kører, kan du bruge den som følger:
-
 1. **Opret en bruger:**
-   - Vælg “Opret konto”
-   - Indtast email, adgangskode og navn eller brug Google-login
+   - Vælg “Opret konto”.
+   - Indtast email, adgangskode og navn, eller brug Google-login.
 
 2. **Login:**
-   - Brug dine login-oplysninger til at logge ind
+   - Brug dine loginoplysninger til at logge ind.
 
 3. **Chatrooms:**
-   - Du bliver tilknyttet et eller flere chatrooms
-   - Åbn et chatroom og begynd at skrive
-   - Det chatroom med senest aktivitet ligger øverst i listen
+   - Du bliver automatisk tilknyttet chatrooms, hvis andre har tilføjet dig.
+   - Du kan også oprette dine egne chatrooms.
+   - Det chatroom med den seneste aktivitet vises øverst i listen.
+   - Inde i et chatroom kan du sende beskeder og billeder.
 
-4. **Send besked:**
-   - Indtast tekst i beskedfeltet og tryk “Send”
-   - Du kan vedhæfte et billede fra din enhed og sende med din besked
+4. **Send beskeder:**
+   - Skriv en besked og tryk “Send”.
+   - Du kan vedhæfte et billede fra din enhed.
 
-5. **Log ud:**
-   - Tryk på “Log ud” hvis du ønsker at forlade appen og komme tilbage til opret/login skærmen
-  
+5. **Chatindstillinger:**
+   - Tryk på tandhjulet i chatroomet for at se indstillinger.
+   - Som admin kan du tilføje/fjerne brugere og ændre navn/beskrivelse.
+   - Kun admin kan slette et chatroom.
+   - Ikke-admins kan se deltagerliste og chat-info, men ikke redigere.
+
+6. **Brugerindstillinger:**
+   - Tryk på tandhjulet på hjemmeskærmen for at tilgå brugerindstillinger.
+   - Her kan du ændre brugernavn og adgangskode.
+   - Nederst i denne menu finder du log ud-knappen.
+
+
 ---
+## 🙋‍♀️ Udvikler
 
-## 🔮 Fremtidige planer
+Dette projekt er udviklet af **Sophie Amalie Karup Sørensen** som en del af 4. semester på Datamatiker-uddannelsen. Projektet er lavet i samarbejde med **Pentia**, og videreudviklet i de to første uger af praktikforløbet hos **Pentia Mobile** i Odense.
 
-- Brugere kan oprette egne chatrooms med navn og beskrivelse
-- Push-notifikationer, så man får besked ved nye beskeder
-- Dark/Light mode med mulighed for at skifte i indstillinger
-
----
-## 🙋‍♀️ Udviklet af
-
-Dette projekt er udviklet af Sophie Amalie Karup Sørensen som en del af et projekt i samarbejde med Pentia på 4. semester af Datamatiker uddannelsen. 
 
