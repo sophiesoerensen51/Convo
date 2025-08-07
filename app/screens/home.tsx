@@ -10,13 +10,10 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     const currentUser = auth().currentUser;
-    if (!currentUser) {
-      console.log("No authenticated user found");
-      return;
-    }
-
+    if (!currentUser) return;
+  
     setUser(currentUser);
-
+  
     // Migration: tilføj lastMessageTimestamp hvis kun lastMessageAt findes
     firestore()
       .collection('chatRooms')
@@ -25,71 +22,54 @@ const HomeScreen = ({ navigation }) => {
         querySnapshot.forEach(doc => {
           const data = doc.data();
           if (!data.lastMessageTimestamp && data.lastMessageAt) {
-            console.log(`Migrating chatRoom ${doc.id}`);
             doc.ref.update({ lastMessageTimestamp: data.lastMessageAt });
           }
         });
-      })
-      .catch(error => console.error('Migration error:', error));
-
-    let cleanupRooms = () => { };
-
-    const unsubscribeUser = firestore()
-      .collection('Users')
-      .doc(currentUser.uid)
-      .onSnapshot(userDoc => {
-        if (!userDoc.exists) {
-          console.log("User document does not exist");
-          return;
-        }
-
-        const userData = userDoc.data();
-        const userChatRoomIds = userData.chatRooms || [];
-
-        if (userChatRoomIds.length === 0) {
-          setChatRooms([]);
-          return;
-        }
-
-        const unsubscribeRooms = userChatRoomIds.map((roomId) => {
-          return firestore()
-            .collection('chatRooms')
-            .doc(roomId)
-            .onSnapshot(docSnapshot => {
-              if (!docSnapshot.exists) {
-                setChatRooms(prevRooms => prevRooms.filter(r => r.id !== roomId));
-                return;
-              }
-
-              const updatedRoom = { id: docSnapshot.id, ...docSnapshot.data() };
-
-              if (!updatedRoom.name) return;
-
-              setChatRooms(prevRooms => {
-                const otherRooms = prevRooms.filter(r => r.id !== updatedRoom.id);
-                const updatedList = [...otherRooms, updatedRoom];
-
-                return updatedList
-                  .filter(room => room.name)
-                  .sort((a, b) => {
-                    const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-                    const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
-                    return bTime - aTime;
-                  });
-              });
-            });
-        });
-
-        cleanupRooms = () => {
-          unsubscribeRooms.forEach(unsub => unsub());
-        };
       });
-
+  
+    const userDocRef = firestore().collection('Users').doc(currentUser.uid);
+  
+    const unsubscribeUser = userDocRef.onSnapshot(userDoc => {
+      if (!userDoc.exists) return;
+  
+      const userChatRoomIds = userDoc.data().chatRooms || [];
+  
+      if (userChatRoomIds.length === 0) {
+        setChatRooms([]);
+        return;
+      }
+  
+      const chatRoomsQuery = firestore()
+        .collection('chatRooms')
+        .where(firestore.FieldPath.documentId(), 'in', userChatRoomIds);
+  
+      const unsubscribeRooms = chatRoomsQuery.onSnapshot(snapshot => {
+        const rooms = [];
+        snapshot.forEach(doc => {
+          if (doc.exists) {
+            rooms.push({ id: doc.id, ...doc.data() });
+          }
+        });
+  
+        rooms.sort((a, b) => {
+          const aTime = a?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+          const bTime = b?.lastMessageTimestamp?.toDate?.()?.getTime?.() ?? 0;
+          return bTime - aTime;
+        });
+  
+        setChatRooms(rooms);
+      });
+  
+      return () => {
+        unsubscribeRooms();
+      };
+    });
+  
     return () => {
       unsubscribeUser();
-      cleanupRooms();
     };
   }, []);
+  
 
   const handleChatPress = (chatRoom) => {
     navigation.navigate('ChatRoomScreen', {
